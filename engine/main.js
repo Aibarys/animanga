@@ -51,6 +51,23 @@ const loadImage = (src) => new Promise((resolve, reject) => {
   img.src = src;
 });
 
+// Картинки страницы ставятся, когда до её сцены остаётся пара экранов: у полной главы страниц
+// на десятки мегабайт, и ждать их все до первого кадра нельзя
+const nearby = new Map();
+const approach = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    approach.unobserve(entry.target);
+    nearby.get(entry.target)?.forEach(([node, src]) => { node.src = src; });
+    nearby.delete(entry.target);
+  }
+}, { rootMargin: '200% 0px' });
+
+function loadNear(section, list) {
+  nearby.set(section, list);
+  approach.observe(section);
+}
+
 function fitCanvas(canvas) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.round(canvas.clientWidth * dpr);
@@ -555,8 +572,9 @@ function buildShot(scene) {
   cam.style.height = `${size.h}px`;
   const extra = FLAT ? null : layered[pages[scene.page].src];
   const img = el('img', 'page', cam);
-  img.src = extra?.bg ?? pages[scene.page].src;
   img.alt = '';
+  img.decoding = 'async';
+  const lazy = [[img, extra?.bg ?? pages[scene.page].src]];
   const lives = {};
   for (const spec of FLAT ? [] : living[pages[scene.page].src] ?? []) {
     if (steps.some((s) => s.live === spec.id)) lives[spec.id] = createLiving(cam, spec, pages[scene.page].src, size.w, size.h);
@@ -564,11 +582,12 @@ function buildShot(scene) {
   const layers = (extra?.layers ?? []).map((spec) => {
     const [x, y, w, h] = spec.box;
     const node = el('img', 'layer', cam);
-    node.src = spec.src;
+    lazy.push([node, spec.src]);
     node.alt = '';
     Object.assign(node.style, { left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` });
     return { el: node, x: x * size.w, y: y * size.h, ax: spec.anchor[0], ay: spec.anchor[1], depth: spec.depth };
   });
+  loadNear(section, lazy);
   const particles = steps.some((s) => s.smoke || s.sparkle) ? createParticles(cam, size.w, size.h) : null;
   const tint = el('div', 'tint', cam);
   if (DEBUG) addDebugRects(cam, scene.page);
@@ -661,19 +680,22 @@ async function init() {
   if (title && !document.title) document.title = `${title.replace('\n', ' ')} — Аниманга`;   // заголовок из index.html важнее
   try {
     [layered, living] = await Promise.all([loadManifest(story.layers), loadManifest(story.living)]);
-    const extras = [
-      ...Object.values(layered).flatMap((p) => p.layers.map((l) => l.src)),
-      ...Object.values(living).flat().map((l) => l.map),
-    ];
+    // Размер страницы можно назвать в story.js (size у истории или у страницы) — тогда её не ждём,
+    // она подгрузится по дороге. Живой панели скан нужен сразу: из него делается текстура.
     // Где есть 2.5D-слои, на экране фон того же размера, что и страница, — сам скан нужен
     // только живой панели
     await Promise.all([
       ...Object.entries(pages).map(async ([id, page]) => {
+        const known = page.size ?? story.size;
+        if (known && !living[page.src]) {
+          sizes[id] = { w: known[0], h: known[1] };
+          return;
+        }
         const img = await loadImage(layered[page.src]?.bg ?? page.src);
         sizes[id] = { w: img.naturalWidth, h: img.naturalHeight };
         if (layered[page.src] && living[page.src]) await loadImage(page.src);
       }),
-      ...extras.map(loadImage),
+      ...Object.values(living).flat().map((l) => loadImage(l.map)),
     ]);
     for (const scene of scenes) {
       if (scene.type === 'title') buildTitle(scene);
