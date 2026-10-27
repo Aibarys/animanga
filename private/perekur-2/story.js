@@ -250,5 +250,5 @@ export const scenes = [
       { view: 'c', sparkle: [0.6, 0.75, 0.3, 0.2] },
     ],
   },
-  { type: 'end', text: 'Конец главы 2', credit: CREDIT },
+  { type: 'end', text: 'Конец главы 2', credit: CREDIT, next: { href: '../perekur-3/', text: 'Глава 3 →' } },
 ];
