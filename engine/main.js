@@ -4,7 +4,7 @@ gsap.registerPlugin(ScrollTrigger);
 // возле открытой страницы, поэтому все пути в сценарии — от папки истории
 const root = document.getElementById('story');
 const story = await import(new URL(root.dataset.story ?? 'story.js', document.baseURI).href);
-const { pages, scenes } = story;
+const { pages = {}, scenes } = story;   // у вебтуна страниц нет — только лента кадров
 const params = new URLSearchParams(location.search);
 const DEBUG = params.has('debug');
 const FLAT = params.has('flat');   // ?flat — без слоёв и живых панелей, чтобы сравнить с плоской версией
@@ -210,7 +210,7 @@ function createHatch(canvas) {
 
 // ---------- Линии концентрации (speed lines) ----------
 
-function createSpeedLines(canvas) {
+function createSpeedLines(canvas, color = INK) {
   const ctx = canvas.getContext('2d');
   const state = { amount: 0 };
   let frame = 0;
@@ -224,7 +224,7 @@ function createSpeedLines(canvas) {
     const cx = w / 2;
     const cy = h / 2;
     const R = (Math.hypot(w, h) / 2) * 1.05;
-    ctx.fillStyle = INK;
+    ctx.fillStyle = color;
     ctx.globalAlpha = state.amount;
     ctx.beginPath();
     for (let k = 0; k < 120; k++) {
@@ -517,7 +517,7 @@ function scrubbed(section) {
 function buildTitle(scene) {
   const section = el('section', 'scene', root);
   section.style.height = `${(scene.length ?? 1.2) * 100 + 100}vh`;
-  const stage = el('div', 'stage paper', section);
+  const stage = el('div', `stage ${scene.theme ?? 'paper'}`, section);   // theme: 'ink' — светлое на тёмном
   const wrap = el('div', 'title-wrap', stage);
   if (scene.kicker) el('p', 'kicker', wrap).textContent = scene.kicker;
 
@@ -697,10 +697,15 @@ async function init() {
       }),
       ...Object.values(living).flat().map((l) => loadImage(l.map)),
     ]);
+    // Вебтун: лента кадров и её эффекты — в strip.js, грузится, только если она есть в сценарии
+    const strip = story.strip && (await (await fetch(story.strip)).json());
+    const { buildStrip } = strip ? await import('./strip.js') : {};
     for (const scene of scenes) {
       if (scene.type === 'title') buildTitle(scene);
       else if (scene.type === 'end') buildEnd(scene);
-      else buildShot(scene);
+      else if (scene.type === 'strip') {
+        buildStrip(root, { el, loadNear, shake, createSpeedLines, fitCanvas, canvases, strip, frames: story.frames ?? {}, debug: DEBUG });
+      } else buildShot(scene);
     }
   } catch (err) {
     loader.textContent = err.message;

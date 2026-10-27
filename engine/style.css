@@ -269,3 +269,80 @@ body {
 }
 .end .next:hover { background: var(--accent); color: var(--paper); }
 .end .next + .back { margin-top: 3vh; }
+
+/* ---------- Вебтун: лента кадров встык (engine/strip.js) ---------- */
+
+.stage.ink { background: var(--ink); color: var(--paper); }
+
+.strip { position: relative; }
+.strip-col { width: min(100%, 720px); margin: 0 auto; }
+
+/* Кадры заходят друг на друга на пиксель: иначе на стыках дробных высот просвечивает фон */
+.seg { position: relative; overflow: hidden; background: #111; }
+.seg + .seg { margin-top: -1px; }
+.seg-zoom, .seg-hit { position: absolute; inset: 0; }
+.seg img { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; }
+.seg-label {
+  position: absolute; left: 6px; top: 6px; z-index: 5; padding: 2px 8px;
+  background: #00e0ff; color: #000; font: 700 16px/1.2 'Oswald', sans-serif;
+}
+
+.strip-fx { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+.strip-particles, .strip-speed { position: absolute; inset: 0; width: 100%; height: 100%; }
+.strip-flash { position: absolute; inset: 0; background: #fff; opacity: 0; }
+.strip-blood { position: absolute; inset: 0; background: #b3001b; mix-blend-mode: multiply; opacity: 0; }
+.strip-edges {
+  position: absolute; inset: 0; opacity: 0;
+  background: radial-gradient(120% 85% at 50% 50%, transparent 52%, rgba(190, 0, 24, .8));
+}
+
+/* Сбой: копии кадра без одного из каналов складываются «экраном» и разъезжаются */
+.glitch, .holo, .tv, .tv-roll, .seg-glow { position: absolute; pointer-events: none; }
+.glitch { opacity: 0; }
+.glitch-split { position: absolute; inset: 0; background: #000; isolation: isolate; }
+.glitch-r, .glitch-gb, .glitch-slice { position: absolute; inset: 0; background-repeat: no-repeat; }
+.glitch-r { filter: url(#only-r); mix-blend-mode: screen; }
+.glitch-gb { filter: url(#only-gb); mix-blend-mode: screen; }
+.channel-filters { position: absolute; width: 0; height: 0; }
+
+/* Системное окно: светящаяся рамка, строки развёртки, полоса сканирования */
+.holo { opacity: 0; transition: opacity .5s; --c: #5fd8ff; }
+.holo.on { opacity: 1; }
+.holo-body {
+  position: absolute; inset: 0;
+  box-shadow: 0 0 18px 2px color-mix(in srgb, var(--c) 65%, transparent), inset 0 0 22px color-mix(in srgb, var(--c) 45%, transparent);
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--c) 18%, transparent) 0 1px, transparent 1px 4px);
+  mix-blend-mode: screen;
+  animation: holo-breathe 2.6s ease-in-out infinite;
+}
+.holo-sweep {
+  position: absolute; left: 0; right: 0; top: 0; height: 22%; opacity: 0;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--c) 70%, transparent) 70%, #fff 96%, transparent);
+  mix-blend-mode: screen;
+}
+@keyframes holo-breathe { 50% { opacity: .55; } }
+.holo.soft { -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent); mask-image: radial-gradient(closest-side, #000 55%, transparent); }
+.holo.soft .holo-body { box-shadow: none; }
+
+/* Помехи и бегущая полоса */
+.tv { opacity: 0; image-rendering: pixelated; mix-blend-mode: screen; }
+.tv-roll { overflow: hidden; }
+.tv-roll::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 14%; top: -14%;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, .14), transparent);
+}
+.tv-roll.on::after { animation: tv-roll 2.2s linear infinite; }
+@keyframes tv-roll { to { top: 100%; } }
+
+/* Мягкий свет: экран телефона, глаз, рога */
+.seg-glow { opacity: 0; mix-blend-mode: screen; --c: #fff; }
+.seg-glow::before {
+  content: ''; position: absolute; inset: -12%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 55%, transparent), transparent);
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+@keyframes glow-pulse { 50% { opacity: .45; transform: scale(.96); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .holo-body, .seg-glow::before, .tv-roll.on::after { animation: none; }
+}
