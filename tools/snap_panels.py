@@ -5,9 +5,9 @@
 Если края наклонные, рамка становится четырёхугольником [[x, y] × 4]: левый верхний угол, правый
 верхний, правый нижний, левый нижний. Края по краю страницы и края без линии рядом не трогаются.
 
-Запуск из папки prototype:
-  python3 -I tools/snap_panels.py stories/supermarket.js           — отчёт и проверочные листы
-  python3 -I tools/snap_panels.py stories/supermarket.js --write   — то же и записать рамки в сценарий
+Запуск из корня сайта (страницы ищутся рядом со сценарием):
+  python3 -I tools/snap_panels.py private/perekur/story.js           — отчёт и проверочные листы
+  python3 -I tools/snap_panels.py private/perekur/story.js --write   — то же и записать рамки в сценарий
   ... --only=p05.c,p13.a  — проверочный лист только с этими панелями, крупнее
   ... --as-is             — ничего не подгонять, только нарисовать листы по рамкам из сценария
                             (проверить ручные правки: --write перезаписал бы их)
@@ -21,7 +21,6 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-ROOT = Path(__file__).resolve().parent.parent
 WORK_W = 720        # ширина, до которой уменьшаем страницу для поиска
 DARK = 110          # темнее — тушь обводки
 BRIGHT = 200        # светлее — промежуток между панелями
@@ -183,13 +182,13 @@ def draw(img, shape, color, width):
     return pts
 
 
-def sheets(pages, result, folder, only=None):
+def sheets(pages, result, base, only=None):
     """Каждая панель так, как её вырежет камера: внутри рамки — как есть, снаружи — притушено.
     Чужой кусочек у края внутри рамки сразу заметен."""
     cell, cols, per = (520, 4, 12) if only else (360, 6, 24)
     shots = []
     for pid, page in pages.items():
-        img = Image.open(ROOT / page['src']).convert('RGB')
+        img = Image.open(base / page['src']).convert('RGB')
         W, H = img.size
         dim = img.point(lambda v: v // 4)
         for key in page['panels']:
@@ -213,7 +212,7 @@ def sheets(pages, result, folder, only=None):
         for i, shot in enumerate(group):
             x, y = (i % cols) * (cell + 6), (i // cols) * (cell + 6)
             sheet.paste(shot, (x + (cell - shot.width) // 2, y + (cell - shot.height) // 2))
-        sheet.save(folder / f'_snap{"-only" if only else ""}-{n // per + 1}.jpg', quality=88)
+        sheet.save(base / Path(next(iter(pages.values()))['src']).parent / f'_snap{"-only" if only else ""}-{n // per + 1}.jpg', quality=88)
 
 
 def literal(shape):
@@ -239,7 +238,7 @@ def main():
                                       check=True, capture_output=True, text=True).stdout)
     result = {}
     for pid, page in pages.items():
-        img = Page(ROOT / page['src'])
+        img = Page(story.parent / page['src'])
         result[pid] = {}
         for key, shape in page['panels'].items():
             if '--as-is' in sys.argv:
@@ -252,7 +251,7 @@ def main():
             print(f'{pid}.{key}: {marks}  {"четырёхугольник " if isinstance(new[0], list) else ""}'
                   f'{literal(new)}{"  мало туши " + " ".join(weak) if weak else ""}')
     only = next((a.split('=', 1)[1].split(',') for a in sys.argv if a.startswith('--only=')), None)
-    sheets(pages, result, (ROOT / next(iter(pages.values()))['src']).parent, only)
+    sheets(pages, result, story.parent, only)
     if '--write' in sys.argv and '--as-is' not in sys.argv:
         write_back(story, result)
         print('рамки записаны в', story)

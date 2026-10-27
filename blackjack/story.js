@@ -1,17 +1,19 @@
-// Страницы манги.
+// Страницы манги. Пути — от папки истории: index.html, story.js и pages/ лежат рядом.
 // src — файл страницы, panels — рамки панелей (или просто областей кадра) в долях страницы:
 // [x, y, ширина, высота], где 0 — левый/верхний край, 1 — правый/нижний. Наклонную панель можно
 // задать четырьмя углами [[x, y], ×4] по часовой стрелке от левого верхнего — камера вырежет её по ним.
-// Открой index.html?story=blackjack&debug, чтобы увидеть рамки поверх страниц.
+// Открой /blackjack/?debug, чтобы увидеть рамки поверх страниц.
 //
 // Источник: «Give My Regards to Black Jack», SHUHO SATO, т. 1, английская версия,
 // официальная раздача для свободного вторичного использования: https://densho810.com/free/
 // По условиям автора название и имя нужно указывать без изменений (см. credit ниже).
 //
-// 2.5D-слои (облачка, звуки, текст, столб, рука) описаны в tools/layers.json.
-// После правок пересобрать: python3 -I tools/make_layers.py  (из папки prototype).
-// Сравнить с плоской версией: index.html?story=blackjack&flat. Сила параллакса — KP и KZ в main.js,
+// 2.5D-слои (облачка, звуки, текст, столб, рука) описаны в layers.json рядом.
+// После правок пересобрать из корня сайта: python3 -I tools/make_layers.py blackjack
+// Сравнить с плоской версией: /blackjack/?flat. Сила параллакса — KP и KZ в engine/main.js,
 // для отдельного шага — parallax: 0…1.
+export const layers = 'pages/layers/manifest.json';
+
 export const pages = {
   night: {
     src: 'pages/bj-p34.jpg',
@@ -52,7 +54,7 @@ export const pages = {
 export const scenes = [
   {
     type: 'title',
-    kicker: 'Тест анимации · т. 1, стр. 34–38',
+    kicker: 'Сцена · т. 1, стр. 34–38',
     title: 'Give My Regards\nto Black Jack',
     credit: 'Give My Regards to Black Jack · SHUHO SATO',
     hint: 'Листай вниз ↓',
@@ -90,5 +92,5 @@ export const scenes = [
       { view: 'c', zoom: 1.2, effect: ['flash', 'shake'] },
     ],
   },
-  { type: 'end', text: 'Конец теста', credit: 'Give My Regards to Black Jack · SHUHO SATO' },
+  { type: 'end', text: 'Конец сцены', credit: 'Give My Regards to Black Jack · SHUHO SATO' },
 ];

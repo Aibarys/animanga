@@ -1,9 +1,11 @@
 gsap.registerPlugin(ScrollTrigger);
 
+// Каждая история — своя папка: index.html, story.js и pages/ рядом. Движок берёт story.js
+// возле открытой страницы, поэтому все пути в сценарии — от папки истории
+const root = document.getElementById('story');
+const story = await import(new URL(root.dataset.story ?? 'story.js', document.baseURI).href);
+const { pages, scenes } = story;
 const params = new URLSearchParams(location.search);
-const STORIES = ['supermarket', 'blackjack'];   // ?story=blackjack — другая история из папки stories
-const STORY = STORIES.includes(params.get('story')) ? params.get('story') : STORIES[0];
-const { pages, scenes } = await import(`./stories/${STORY}.js`);
 const DEBUG = params.has('debug');
 const FLAT = params.has('flat');   // ?flat — без слоёв и живых панелей, чтобы сравнить с плоской версией
 const LIVE = Number(params.get('live')) || 1;   // ?live=4 — утрировать движение живых панелей, чтобы видеть карту
@@ -21,7 +23,10 @@ gsap.ticker.add((time) => lenis.raf(time * 1000));
 gsap.ticker.lagSmoothing(0);
 window.lenis = lenis;
 
-const root = document.getElementById('story');
+// Тонкая полоска сверху — сколько истории уже пролистано
+const progress = document.querySelector('.progress');
+if (progress) lenis.on('scroll', ({ progress: p }) => { progress.style.transform = `scaleX(${p})`; });
+
 const sizes = {};
 let layered = {};
 let living = {};
@@ -526,6 +531,9 @@ function buildEnd(scene) {
   const section = el('section', 'end', root);
   el('p', '', section).textContent = scene.text;
   if (scene.credit) el('p', 'credit', section).textContent = scene.credit;
+  const back = el('a', 'back', section);
+  back.href = '../';
+  back.textContent = '← Ко всем историям';
 }
 
 function buildShot(scene) {
@@ -630,8 +638,9 @@ function buildShot(scene) {
 
 // ---------- Запуск ----------
 
+// Манифесты слоёв и живых панелей — у какой истории они есть, она сама называет в story.js
 async function loadManifest(path) {
-  if (FLAT) return {};
+  if (FLAT || !path) return {};
   try {
     const res = await fetch(path);
     return res.ok ? await res.json() : {};
@@ -646,15 +655,18 @@ async function init() {
   const title = scenes.find((s) => s.type === 'title')?.title;
   if (title) document.title = `${title.replace('\n', ' ')} — Аниманга`;
   try {
-    [layered, living] = await Promise.all([loadManifest('pages/layers/manifest.json'), loadManifest('pages/living/manifest.json')]);
+    [layered, living] = await Promise.all([loadManifest(story.layers), loadManifest(story.living)]);
     const extras = [
-      ...Object.values(layered).flatMap((p) => [p.bg, ...p.layers.map((l) => l.src)]),
+      ...Object.values(layered).flatMap((p) => p.layers.map((l) => l.src)),
       ...Object.values(living).flat().map((l) => l.map),
     ];
+    // Где есть 2.5D-слои, на экране фон того же размера, что и страница, — сам скан нужен
+    // только живой панели
     await Promise.all([
       ...Object.entries(pages).map(async ([id, page]) => {
-        const img = await loadImage(page.src);
+        const img = await loadImage(layered[page.src]?.bg ?? page.src);
         sizes[id] = { w: img.naturalWidth, h: img.naturalHeight };
+        if (layered[page.src] && living[page.src]) await loadImage(page.src);
       }),
       ...extras.map(loadImage),
     ]);

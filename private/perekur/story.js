@@ -1,20 +1,22 @@
 // «История о перекуре за супермаркетом», глава 1.
 // Оригинал: «Smoking Behind the Supermarket with You» (スーパーの裏でヤニ吸うふたり), Jinushi, Square Enix.
-// Страницы — любительский перевод KUKAN TEAM. Это коммерческая манга: только для локального теста,
-// не публиковать.
+// Страницы — любительский перевод KUKAN TEAM. Это коммерческая манга: только для себя. На сайте
+// вся папка private/ закрыта паролем (deploy/nginx.conf), публично её не выкладывать.
 //
 // Рамки панелей — [x, y, w, h] или четыре угла [[x, y], ×4] по часовой стрелке от левого верхнего:
 // здесь почти все панели чуть наклонные. Их нашёл tools/detect_panels.py и подогнал к линиям рамок
-// tools/snap_panels.py: python3 -I tools/snap_panels.py stories/supermarket.js рисует листы проверки
-// pages/supermarket/_snap-*.jpg, с --write записывает рамки сюда. После этого вручную поправлены
+// tools/snap_panels.py: python3 -I tools/snap_panels.py private/perekur/story.js рисует листы проверки
+// pages/_snap-*.jpg, с --write записывает рамки сюда. После этого вручную поправлены
 // p01 a, p02 a|b, p03 a, p05 c, p13 c/d, p14 a/d и p15 (нижняя панель на деле две) — --write
-// их перезапишет. Открой index.html?debug, чтобы увидеть рамки поверх страниц.
-// Формат шагов — как в stories/blackjack.js, плюс два эффекта:
+// их перезапишет. Открой /private/perekur/?debug, чтобы увидеть рамки поверх страниц.
+// Формат шагов — как в blackjack/story.js, плюс два эффекта:
 //   smoke   — откуда идёт дым: точка [x, y] на странице (обычно кончик сигареты) или массив точек
 //   sparkle — блёстки: true — по всей рамке шага, или своя рамка [x, y, w, h]
-//   live    — id живой панели из tools/living.json: рисунок сам дышит, качает волосами, дым струится.
-//             Пересобрать карту: python3 -I tools/make_living.py. Сразу к странице: index.html#p09
-const page = (n, panels) => ({ src: `pages/supermarket/p${String(n).padStart(2, '0')}.jpg`, panels });
+//   live    — id живой панели из living.json рядом: рисунок сам дышит, качает волосами, дым струится.
+//             Пересобрать карту: python3 -I tools/make_living.py private/perekur. Сразу к странице: #p09
+export const living = 'pages/living/manifest.json';
+
+const page = (n, panels) => ({ src: `pages/p${String(n).padStart(2, '0')}.jpg`, panels });
 
 export const pages = {
   p01: page(1, {

@@ -1,21 +1,22 @@
 """Готовит «живые панели»: карту весов, по которой шейдер в браузере слегка деформирует скан.
 
 Слои не вырезаются, а значит, за ними не бывает дыр: двигается сам рисунок, как в Live2D.
-Читает tools/living.json, для каждой панели пишет в pages/living/:
+Читает <папка истории>/living.json, для каждой панели пишет в <папка истории>/pages/living/:
   <страница>-<id>-map.png      — R: качание (волосы), G: дыхание (тело, голова), B: струение (нарисованный дым)
   <страница>-<id>-preview.jpg  — проверочная картинка: веса цветом поверх панели
   manifest.json                — рамки, карты и параметры движения
 
-Запуск из папки prototype:  python3 -I tools/make_living.py
+Запуск из корня сайта:  python3 -I tools/make_living.py private/perekur
 """
 import json
 import math
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
-ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / 'pages' / 'living'
+STORY = Path(sys.argv[1] if len(sys.argv) > 1 else '.')   # папка истории: в ней living.json и pages/
+OUT = STORY / 'pages' / 'living'
 MOTIONS = ['sway', 'breathe', 'flow']   # порядок = каналы R, G, B
 SCALE = 0.5                             # веса гладкие, хватает карты в половину разрешения
 EDGE = 4                                # у краёв рамки рисунок стоит на месте (пиксели карты)
@@ -53,7 +54,7 @@ def polygon(points, box, size, value=255):
 
 
 def build(src, panel, manifest):
-    page = Image.open(ROOT / src).convert('RGB')
+    page = Image.open(STORY / src).convert('RGB')
     W, H = page.size
     box = panel['box']
     x, y, w, h = box
@@ -99,8 +100,10 @@ def build(src, panel, manifest):
 
 
 def main():
+    if not (STORY / 'living.json').exists():
+        sys.exit(__doc__)
     OUT.mkdir(parents=True, exist_ok=True)
-    spec = json.loads((ROOT / 'tools' / 'living.json').read_text(encoding='utf-8'))
+    spec = json.loads((STORY / 'living.json').read_text(encoding='utf-8'))
     manifest = {}
     for src, panels in spec.items():
         if not src.startswith('_'):

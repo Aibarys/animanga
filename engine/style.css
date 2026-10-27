@@ -217,3 +217,43 @@ body {
   font: 700 28px/1 'Oswald', sans-serif;
   pointer-events: none;
 }
+
+/* ---------- Навигация: на главную, прогресс чтения, назад в конце ---------- */
+
+.home {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  z-index: 50;
+  color: #fff;
+  mix-blend-mode: difference;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 50;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.end .back {
+  justify-self: center;
+  margin-top: 5vh;
+  padding-bottom: 3px;
+  border-bottom: 1px solid currentColor;
+  color: var(--paper);
+  text-decoration: none;
+}
+.end .back:hover { color: var(--accent); }

@@ -1,6 +1,6 @@
 """Находит панели на страницах манги разрезом по белым промежуткам (XY-cut).
 
-Запуск из папки prototype:  python3 -I tools/detect_panels.py pages/supermarket
+Запуск из корня сайта:  python3 -I tools/detect_panels.py private/perekur/pages
 Пишет <папка>/panels.json ({"p01.jpg": [[x, y, w, h], ...]} в долях страницы, в порядке чтения манги:
 сверху вниз, в ряду — справа налево) и проверочный лист <папка>/_preview.jpg.
 """

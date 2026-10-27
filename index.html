@@ -3,20 +3,65 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Аниманга — тест</title>
+  <title>Аниманга — манга, которая оживает при прокрутке</title>
+  <meta name="description" content="Манга, которая оживает при прокрутке: камера ведёт по панелям, дым струится, страницы сменяются штриховкой туши.">
+  <meta property="og:title" content="Аниманга">
+  <meta property="og:description" content="Манга, которая оживает при прокрутке.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=PT+Serif:ital@0;1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.css">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="site.css">
 </head>
 <body>
-  <div id="loader">Загрузка страниц…</div>
-  <main id="story"></main>
+  <header class="hero wrap">
+    <p class="label">Манга, которая оживает при прокрутке</p>
+    <h1 aria-label="Аниманга"><span style="--i:0">А</span><span style="--i:1">н</span><span style="--i:2">и</span><span style="--i:3">м</span><span style="--i:4">а</span><span style="--i:5">н</span><span style="--i:6">г</span><span style="--i:7">а</span></h1>
+    <p class="lead">Камера сама ведёт по панелям, дым струится, звуки дрожат, а страницы сменяются штриховкой туши. Нажимать ничего не нужно — просто листайте.</p>
+  </header>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
-  <script type="module" src="main.js"></script>
+  <main class="wrap">
+    <section class="section">
+      <h2 class="label">Истории</h2>
+      <div class="cards">
+        <a class="card" href="blackjack/">
+          <img src="blackjack/pages/cover.jpg" alt="Ночной город с высоты — страница из «Give My Regards to Black Jack»" width="720" height="866">
+          <div class="card-body">
+            <p class="label card-kicker">Сцена · том 1</p>
+            <h3>Give My Regards to Black Jack</h3>
+            <p class="label card-credit">SHUHO SATO</p>
+            <p class="card-text">Ночная Япония, авария на окраине и скорая помощь — первые страницы истории о молодом враче.</p>
+            <span class="label card-cta">Смотреть →</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="label">Как это устроено</h2>
+      <ol class="steps">
+        <li>
+          <span class="num">01</span>
+          <h3>Камера</h3>
+          <p>Каждая страница — сцена. Камера перелетает от панели к панели в порядке чтения и вырезает кадр точно по рамке, даже наклонной.</p>
+        </li>
+        <li>
+          <span class="num">02</span>
+          <h3>Эффекты</h3>
+          <p>Тряска, вспышка, линии скорости, дым и блёстки — только там, где они есть в самой сцене.</p>
+        </li>
+        <li>
+          <span class="num">03</span>
+          <h3>Глубина</h3>
+          <p>Облачка и предметы отделены от фона и сдвигаются с параллаксом, а рисунок может слегка дышать — без перерисовки.</p>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <p>Give My Regards to Black Jack · SHUHO SATO — по условиям автора о свободном вторичном использовании: <a href="https://densho810.com/free/">densho810.com/free</a>.</p>
+    <p>Аниманга, 2026</p>
+  </footer>
 </body>
 </html>

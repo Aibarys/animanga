@@ -1,21 +1,22 @@
 """Режет страницы манги на слои для 2.5D-параллакса.
 
-Читает tools/layers.json, для каждой страницы пишет в pages/layers/:
+Читает <папка истории>/layers.json, для каждой страницы пишет в <папка истории>/pages/layers/:
   <страница>-bg.jpg      — фон, где вырезанные объекты заменены размытым продолжением соседних пикселей
   <страница>-<id>.webp   — вырезанный слой с прозрачностью, обрезанный по своим границам
   manifest.json          — какие слои есть, где они лежат и насколько они «ближе»
   <страница>-preview.jpg — проверочная картинка: слои подсвечены цветом
 
-Запуск из папки prototype:  python3 -I tools/make_layers.py
+Запуск из корня сайта:  python3 -I tools/make_layers.py blackjack
 """
 import json
+import sys
 from collections import deque
 from pathlib import Path
 
 from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps
 
-ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / 'pages' / 'layers'
+STORY = Path(sys.argv[1] if len(sys.argv) > 1 else '.')   # папка истории: в ней layers.json и pages/
+OUT = STORY / 'pages' / 'layers'
 COLORS = [(255, 40, 90), (0, 190, 255), (255, 200, 0), (120, 255, 80), (200, 90, 255), (255, 130, 0)]
 
 
@@ -168,7 +169,7 @@ def fill_holes(img, hole):
 
 
 def build(src, cfg, manifest):
-    page = Image.open(ROOT / src).convert('RGB')
+    page = Image.open(STORY / src).convert('RGB')
     gray = page.convert('L')
     stem = Path(src).stem
     union = Image.new('L', page.size, 0)
@@ -213,8 +214,10 @@ def build(src, cfg, manifest):
 
 
 def main():
+    if not (STORY / 'layers.json').exists():
+        sys.exit(__doc__)
     OUT.mkdir(parents=True, exist_ok=True)
-    spec = json.loads((ROOT / 'tools' / 'layers.json').read_text(encoding='utf-8'))
+    spec = json.loads((STORY / 'layers.json').read_text(encoding='utf-8'))
     manifest = {}
     for src, cfg in spec.items():
         if not src.startswith('_'):

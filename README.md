@@ -5,7 +5,7 @@
 2.5D-слои (облачка и предметы отделены от фона и сдвигаются с параллаксом) и «живые панели»:
 WebGL-шейдер слегка деформирует сам скан, и персонаж дышит, качает волосами, дым струится.
 
-GSAP + ScrollTrigger и Lenis с CDN, без сборки.
+Статический сайт без сборки: GSAP + ScrollTrigger и Lenis с CDN.
 
 ## Запуск
 
@@ -13,35 +13,88 @@ GSAP + ScrollTrigger и Lenis с CDN, без сборки.
 python3 -m http.server 5173
 ```
 
-- http://localhost:5173/ — «История о перекуре за супермаркетом», глава 1
-- `?story=blackjack` — сцена из «Give My Regards to Black Jack»
-- `?debug` — рамки панелей поверх страниц, `?flat` — без слоёв и живых панелей,
+- http://localhost:5173/ — каталог
+- `/blackjack/` — сцена из «Give My Regards to Black Jack»
+- `/private/` — личный раздел; на сервере закрыт паролем
+- у любой истории: `?debug` — рамки панелей поверх страниц, `?flat` — без слоёв и живых панелей,
   `#p09` — сразу к странице
-
-## Страницы
-
-Сканы в репозиторий не входят, как и всё, что из них собрано (папка `pages/`). Положить локально:
-
-- `pages/bj-p34.jpg`, `bj-p37.jpg`, `bj-p38.jpg` — «Give My Regards to Black Jack», SHUHO SATO,
-  раздача для вторичного использования: https://densho810.com/free/
-- `pages/supermarket/p01.jpg` … `p15.jpg` — глава 1 «Smoking Behind the Supermarket with You»
-  (Jinushi, Square Enix); коммерческая манга, только для локального теста
-
-Потом собрать слои и живые панели:
-
-```bash
-python3 -I tools/make_layers.py
-```
-
-```bash
-python3 -I tools/make_living.py
-```
 
 ## Устройство
 
-- `main.js` — движок: сцены, камера, эффекты, слои, живые панели
-- `stories/*.js` — истории: рамки панелей и шаги камеры; формат описан в шапке `stories/blackjack.js`
-- `tools/` — инструменты на Python + Pillow:
-  `detect_panels.py` находит панели, `snap_panels.py` подгоняет рамки к линиям границ
-  (ему нужен ещё node), `make_layers.py` режет 2.5D-слои по `layers.json`,
-  `make_living.py` строит карты живых панелей по `living.json`
+- `index.html`, `site.css` — каталог
+- `engine/` — движок: сцены, камера, эффекты, слои, живые панели
+- `blackjack/`, `private/perekur/` — истории. В папке истории: `index.html` (подключает движок),
+  `story.js` (рамки панелей и шаги камеры, формат — в шапке `blackjack/story.js`), исходники для
+  инструментов (`layers.json`, `living.json`) и `pages/` со страницами
+- `tools/` — инструменты на Python + Pillow, запускать из корня:
+  `detect_panels.py` находит панели, `snap_panels.py` подгоняет рамки к линиям границ (ему нужен
+  ещё node), `make_layers.py` режет 2.5D-слои, `make_living.py` строит карты живых панелей,
+  `make_cover.py` делает обложку для каталога
+- `deploy/` — конфиг nginx и скрипт выкладки
+
+## Страницы
+
+Сканы в репозиторий не входят, как и всё, что из них собрано (папки `pages/`). Положить локально:
+
+- `blackjack/pages/bj-p34.jpg`, `bj-p37.jpg`, `bj-p38.jpg` — «Give My Regards to Black Jack»,
+  SHUHO SATO, т. 1, раздача для свободного вторичного использования: https://densho810.com/free/
+- `private/perekur/pages/p01.jpg` … `p15.jpg` — глава 1 «Smoking Behind the Supermarket with You»
+  (Jinushi, Square Enix); коммерческая манга — только для себя, публично не выкладывать
+
+Потом собрать слои, живые панели и обложки:
+
+```bash
+python3 -I tools/make_layers.py blackjack
+```
+
+```bash
+python3 -I tools/make_living.py private/perekur
+```
+
+```bash
+python3 -I tools/make_cover.py blackjack pages/bj-p34.jpg 0 0.49 0.6 0.51
+```
+
+```bash
+python3 -I tools/make_cover.py private/perekur pages/p01.jpg 0.28 0 0.64 0.56
+```
+
+## Выкладка на сервер
+
+Один раз на сервере (Ubuntu/Debian), `DOMAIN` — ваш домен:
+
+```bash
+sudo apt install nginx certbot python3-certbot-nginx apache2-utils
+```
+
+```bash
+sudo mkdir -p /var/www/animanga && sudo chown "$USER" /var/www/animanga
+```
+
+Положить `deploy/nginx.conf` в `/etc/nginx/sites-available/animanga`, заменить в нём `DOMAIN`, затем:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/animanga /etc/nginx/sites-enabled/ && sudo nginx -t && sudo systemctl reload nginx
+```
+
+```bash
+sudo certbot --nginx -d DOMAIN
+```
+
+Пароль для личного раздела — уже после HTTPS (команда сама спросит пароль):
+
+```bash
+sudo htpasswd -c /etc/nginx/animanga.htpasswd aiba
+```
+
+Выкладка — с этой машины, из корня сайта:
+
+```bash
+deploy/deploy.sh user@host https://DOMAIN
+```
+
+Скрипт отправляет код и картинки без инструментов и проверочных листов. Личный раздел он выкладывает,
+только если `https://DOMAIN/private/` и картинка внутри уже отвечают 401, то есть пароль работает.
+
+Black Jack: по условиям автора название и имя указываются без изменений, а о публикации нужно
+сообщить на info@densho810.com в течение месяца.
