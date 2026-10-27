@@ -257,3 +257,15 @@ body {
   text-decoration: none;
 }
 .end .back:hover { color: var(--accent); }
+
+.end .next {
+  justify-self: center;
+  margin-top: 5vh;
+  padding: 12px 22px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 16px;
+  text-decoration: none;
+}
+.end .next:hover { background: var(--accent); color: var(--paper); }
+.end .next + .back { margin-top: 3vh; }

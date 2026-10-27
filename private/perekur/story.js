@@ -274,5 +274,5 @@ export const scenes = [
       { view: [0.3, 0.3, 0.55, 0.4], focus: false, zoom: 1.1 },
     ],
   },
-  { type: 'end', text: 'Конец главы 1', credit: CREDIT },
+  { type: 'end', text: 'Конец главы 1', credit: CREDIT, next: { href: '../perekur-2/', text: 'Глава 2 →' } },
 ];

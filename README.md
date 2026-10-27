@@ -23,7 +23,7 @@ python3 -m http.server 5173
 
 - `index.html`, `site.css` — каталог
 - `engine/` — движок: сцены, камера, эффекты, слои, живые панели
-- `blackjack/`, `private/perekur/` — истории. В папке истории: `index.html` (подключает движок),
+- `blackjack/`, `private/perekur/`, `private/perekur-2/` — истории. В папке истории: `index.html` (подключает движок),
   `story.js` (рамки панелей и шаги камеры, формат — в шапке `blackjack/story.js`), исходники для
   инструментов (`layers.json`, `living.json`) и `pages/` со страницами
 - `tools/` — инструменты на Python + Pillow, запускать из корня:
@@ -40,6 +40,7 @@ python3 -m http.server 5173
   SHUHO SATO, т. 1, раздача для свободного вторичного использования: https://densho810.com/free/
 - `private/perekur/pages/p01.jpg` … `p15.jpg` — глава 1 «Smoking Behind the Supermarket with You»
   (Jinushi, Square Enix); коммерческая манга — только для себя, публично не выкладывать
+- `private/perekur-2/pages/p01.jpg` … `p14.jpg` — глава 2 той же манги, на тех же условиях
 
 Потом собрать слои, живые панели и обложки:
 
@@ -52,11 +53,19 @@ python3 -I tools/make_living.py private/perekur
 ```
 
 ```bash
+python3 -I tools/make_living.py private/perekur-2
+```
+
+```bash
 python3 -I tools/make_cover.py blackjack pages/bj-p34.jpg 0 0.49 0.6 0.51
 ```
 
 ```bash
 python3 -I tools/make_cover.py private/perekur pages/p01.jpg 0.28 0 0.64 0.56
+```
+
+```bash
+python3 -I tools/make_cover.py private/perekur-2 pages/p10.jpg 0.17 0 0.5 0.438
 ```
 
 ## Выкладка на сервер

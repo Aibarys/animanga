@@ -531,6 +531,11 @@ function buildEnd(scene) {
   const section = el('section', 'end', root);
   el('p', '', section).textContent = scene.text;
   if (scene.credit) el('p', 'credit', section).textContent = scene.credit;
+  if (scene.next) {
+    const next = el('a', 'next', section);
+    next.href = scene.next.href;
+    next.textContent = scene.next.text;
+  }
   const back = el('a', 'back', section);
   back.href = '../';
   back.textContent = '← Ко всем историям';
@@ -653,7 +658,7 @@ async function init() {
   const loader = document.getElementById('loader');
   if (DEBUG) document.body.classList.add('debug');
   const title = scenes.find((s) => s.type === 'title')?.title;
-  if (title) document.title = `${title.replace('\n', ' ')} — Аниманга`;
+  if (title && !document.title) document.title = `${title.replace('\n', ' ')} — Аниманга`;   // заголовок из index.html важнее
   try {
     [layered, living] = await Promise.all([loadManifest(story.layers), loadManifest(story.living)]);
     const extras = [
