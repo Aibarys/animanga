@@ -62,7 +62,8 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
   инструментов (`layers.json`, `living.json`) и `pages/` со страницами
 - `private/orv-0/` … `private/orv-4/` — вебтун «Всеведущий читатель», пролог и главы 1–4: в `story.js`
   только эффекты по номерам кадров, сами кадры и `pages/strip.json` режет `cut_strip.py`
-- `private/slf-1/` … `private/slf-10/` и `private/slf-5-5/` — «Рубеж Шангри-Ла», главы 1–10 и бонусная 5.5:
+- `private/slf-1/` … `private/slf-20/`, `private/slf-5-5/` и `private/slf-15-5/` — «Рубеж Шангри-Ла», главы 1–20
+  и бонусные 5.5 и 15.5:
   страничная манга, как «Перекур», плюс игровые эффекты `hud`, `tone` и переход `pixel` (описаны в шапке
   `private/slf-1/story.js`)
 - `tools/` — инструменты на Python + Pillow, запускать из корня:
@@ -91,10 +92,11 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
 python3 -I tools/cut_strip.py private/orv-0 "Всеведущий читатель/Глава 00"
 ```
 
-- `private/slf-1/pages/p01.jpg` … — «Shangri-La Frontier» (Katarina, Ryosuke Fuji, Kodansha), главы 1–10
-  и 5.5 в переводе YONA ANART; коммерческая манга — только для себя. Из папки «Рубеж Шангри-Ла/Глава 01» …
-  «Глава 10», «Глава 05.5» (→ `slf-5-5`) — все картинки по порядку как `p01.jpg`, `p02.jpg`…, кроме
-  последней в главах 1–10 (заметка переводчика с реквизитами). Рамки уже в `story.js`: их нашли
+- `private/slf-1/pages/p01.jpg` … — «Shangri-La Frontier» (Katarina, Ryosuke Fuji, Kodansha), главы 1–20,
+  5.5 и 15.5 в переводе YONA ANART; коммерческая манга — только для себя. Из папки «Рубеж Шангри-Ла/Глава 01» …
+  «Глава 20», «Глава 05.5» (→ `slf-5-5`), «Глава 15.5» (→ `slf-15-5`) — все картинки по порядку как `p01.jpg`,
+  `p02.jpg`…, кроме последней в обычных главах (заметка переводчика с реквизитами); страницы выше 1600 px
+  (главы 12–20 и 15.5) уменьшены до этой высоты с теми же пропорциями. Рамки уже в `story.js`: их нашли
   `detect_panels.py` и `snap_panels.py`, потом все страницы поправлены вручную
 
 Страницы Black Jack — из PDF тома (нужен `pdftoppm` из poppler):
@@ -207,6 +209,50 @@ python3 -I tools/make_cover.py private/slf-9 pages/p18.jpg 0 0.36 1 0.64
 
 ```bash
 python3 -I tools/make_cover.py private/slf-10 pages/p09.jpg 0 0.3 1 0.7
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-11 pages/p16.jpg 0 0.2 0.62 0.325
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-12 pages/p12.jpg 0.05 0.02 0.95 0.5
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-13 pages/p02.jpg 0.11 0.46 0.39 0.54
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-14 pages/p14.jpg 0.22 0 0.66 0.35
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-15 pages/p03.jpg 0.15 0 0.58 0.306
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-15-5 pages/p01.jpg 0.03 0.02 0.94 0.49
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-16 pages/p03.jpg 0 0.55 0.62 0.327
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-17 pages/p16.jpg 0.02 0 0.9 0.475
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-18 pages/p12.jpg 0.3 0.34 0.56 0.295
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-19 pages/p04.jpg 0.07 0 0.93 0.6
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-20 pages/p09.jpg 0.5 0.66 0.48 0.253
 ```
 
 Кадры для коллажа на главной (и ленты кадров в карточке Black Jack):
