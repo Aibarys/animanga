@@ -478,5 +478,5 @@ export const scenes = [
   shot('p56'),
   shot('p57'),
   shot('p58', { b: { zoom: 1.05 } }, { outro: 'hatch' }),
-  { type: 'end', text: 'Конец эпизода 1', credit: CREDIT },
+  { type: 'end', text: 'Конец эпизода 1', credit: CREDIT, back: { href: '../manga/blackjack/', text: '← К эпизодам' } },
 ];

@@ -48,5 +48,5 @@ export const frames = {
 export const scenes = [
   { type: 'title', theme: 'ink', kicker: 'Пролог', title: 'Всеведущий\nчитатель', credit: CREDIT, hint: 'Листай вниз ↓' },
   { type: 'strip' },
-  { type: 'end', text: 'Конец пролога', credit: CREDIT, next: { href: '../orv-1/', text: 'Глава 1 →' } },
+  { type: 'end', text: 'Конец пролога', credit: CREDIT, next: { href: '../orv-1/', text: 'Глава 1 →' }, back: { href: '../manga/orv/', text: '← К списку глав' } },
 ];

@@ -1,0 +1,82 @@
+/* Комментарии (comments.js): и на бумажных страницах каталога, и на тёмных страницах глав — цвета
+   берутся от страницы через currentColor, акцент — её --accent */
+
+.cm { font-family: 'PT Serif', Georgia, serif; }
+
+.cm-form textarea {
+  display: block;
+  width: 100%;
+  min-height: 112px;
+  padding: 12px 14px;
+  border: 2px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: 16px/1.5 'PT Serif', Georgia, serif;
+  resize: vertical;
+}
+.cm-form textarea:focus { outline: none; border-color: var(--accent); }
+.cm-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
+.cm-count,
+.cm-head {
+  font-family: 'Oswald', sans-serif;
+  font-size: 12px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+.cm-count { opacity: .55; }
+.cm-send {
+  padding: 10px 18px;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font: 700 13px 'Oswald', sans-serif;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cm-send:disabled { opacity: .5; cursor: default; }
+.cm-error { margin-top: 8px; color: var(--accent); font-size: 15px; }
+.cm-error:empty { display: none; }
+.cm-note { font-style: italic; opacity: .8; }
+.cm-note a { color: inherit; }
+.cm-note a:hover { color: var(--accent); }
+
+.cm-list { display: grid; gap: 22px; margin-top: 30px; list-style: none; }
+.cm-list:empty { display: none; }
+.cm-empty { margin-top: 24px; }
+.cm-item { padding-top: 14px; border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
+.cm-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
+.cm-name { font-weight: 700; text-transform: none; letter-spacing: .04em; font-size: 15px; }
+.cm-badge { color: var(--accent); }
+.cm-time { opacity: .55; }
+.cm-del {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  opacity: .55;
+  cursor: pointer;
+}
+.cm-del:hover { opacity: 1; color: var(--accent); }
+.cm-body { margin-top: 6px; font-size: 16px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Под главой: узкая колонка на тёмном фоне читалки */
+.chapter-comments {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 5vw, 48px) 96px;
+}
+.chapter-comments h2 {
+  margin-bottom: 24px;
+  padding-top: 14px;
+  border-top: 2px solid currentColor;
+  font: 500 13px 'Oswald', sans-serif;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+}

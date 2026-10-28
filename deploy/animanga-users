@@ -1,0 +1,6 @@
+#!/bin/sh
+# Аккаунты Аниманги на сервере (положить в /usr/local/bin):
+#   animanga-users add ИМЯ --owner   — владелец: видит личный раздел, удаляет любые комментарии
+#   animanga-users passwd ИМЯ | ban ИМЯ | unban ИМЯ | list
+# Пароль спрашивается в терминале и никуда не пишется открытым текстом.
+exec sudo -u animanga env ANIMANGA_DB=/var/lib/animanga/animanga.db /usr/bin/python3 -I /opt/animanga/animanga_api.py user "$@"

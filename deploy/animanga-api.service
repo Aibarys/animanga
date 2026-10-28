@@ -1,0 +1,32 @@
+# Служба входа и комментариев (server/animanga_api.py). Код — в /opt/animanga, база — /var/lib/animanga.
+# Положить в /etc/systemd/system/animanga-api.service, заменить DOMAIN на свой домен (два места), затем
+# systemctl daemon-reload && systemctl enable --now animanga-api
+
+[Unit]
+Description=Animanga: вход, регистрация и комментарии
+After=network.target
+
+[Service]
+User=animanga
+Group=animanga
+Environment=ANIMANGA_DB=/var/lib/animanga/animanga.db
+Environment=ANIMANGA_WEBROOT=/var/www/animanga
+Environment=ANIMANGA_ORIGIN=https://DOMAIN,https://www.DOMAIN
+ExecStart=/usr/bin/python3 -I /opt/animanga/animanga_api.py serve
+Restart=on-failure
+StateDirectory=animanga
+StateDirectoryMode=0750
+
+# Служба видит только свою базу, сайт и код — только на чтение
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

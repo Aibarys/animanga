@@ -65,5 +65,5 @@ export const frames = {
 export const scenes = [
   { type: 'title', theme: 'ink', kicker: 'Глава 3', title: 'Всеведущий\nчитатель', credit: CREDIT, hint: 'Листай вниз ↓' },
   { type: 'strip' },
-  { type: 'end', text: 'Конец главы 3', credit: CREDIT, next: { href: '../orv-4/', text: 'Глава 4 →' } },
+  { type: 'end', text: 'Конец главы 3', credit: CREDIT, next: { href: '../orv-4/', text: 'Глава 4 →' }, back: { href: '../manga/orv/', text: '← К списку глав' } },
 ];

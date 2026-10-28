@@ -8,6 +8,10 @@ WebGL-шейдер слегка деформирует сам скан, и пе�
 Вебтун читается иначе: глава — одна лента кадров встык, как в оригинале, а эффекты привязаны к
 кадрам — системные окна загружаются с глитчем и полосой сканирования, помехи, искры, кровь, сердцебиение.
 
+Каталог → страница манги (о манге, список глав, обсуждение) → глава. Вход, регистрация и
+комментарии — маленький сервер на стандартном Python и SQLite (`server/`); он же пускает в личный
+раздел только владельца сайта.
+
 Статический сайт без сборки: GSAP + ScrollTrigger и Lenis с CDN.
 
 ## Запуск
@@ -17,14 +21,35 @@ python3 -m http.server 5173
 ```
 
 - http://localhost:5173/ — каталог
-- `/blackjack/` — первый эпизод «Give My Regards to Black Jack» целиком
-- `/private/` — личный раздел; на сервере закрыт паролем
+- `/manga/blackjack/` — страница «Give My Regards to Black Jack», `/blackjack/` — первый эпизод целиком
+- `/private/` — личный раздел, `/private/manga/perekur/`, `/private/manga/orv/` — страницы манги;
+  на сервере открыт только владельцу сайта
+- так вход и комментарии не работают (их блоки просто не показываются); чтобы проверить и их, вместо
+  http.server — API вместе с сайтом на http://localhost:8087/, `/private/` закрыт так же, как на сервере:
+
+```bash
+ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py serve --dev .
+```
+
+Локальный аккаунт владельца (пароль спросит сам):
+
+```bash
+ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМЯ --owner
+```
+
 - у любой истории: `?debug` — рамки панелей поверх страниц, `?flat` — без слоёв и живых панелей,
   `#p09` — сразу к странице; у вебтуна `?debug` подписывает номера кадров, `#k40` — сразу к кадру
 
 ## Устройство
 
-- `index.html`, `site.css` — каталог
+- `index.html`, `site.css` — каталог; `manga/blackjack/`, `private/manga/perekur/`, `private/manga/orv/` —
+  страницы манги: сведения, главы, обсуждение. Новая глава — строка в списке глав её манги и `next`
+  в сценарии предыдущей
+- `login/` — вход и регистрация (на сервере она же отвечает с кодом 401 на любой адрес в `/private/`),
+  `auth.js` — кто вошёл и плашка «Войти» в шапке, `comments.js` + `comments.css` — комментарии
+  под главой и на странице манги
+- `server/animanga_api.py` — API входа, регистрации и комментариев, только стандартная библиотека
+  Python и SQLite; как он защищён — в шапке файла
 - `engine/` — движок: сцены, камера, эффекты, слои, живые панели; `engine/strip.js` — лента вебтуна
   и её эффекты (язык эффектов — в шапке файла), грузится, только если в сценарии есть `strip`
 - `blackjack/`, `private/perekur/`, `private/perekur-2/`, `private/perekur-3/` — истории. В папке истории: `index.html` (подключает движок),
@@ -37,7 +62,7 @@ python3 -m http.server 5173
   ещё node), `make_layers.py` режет 2.5D-слои, `make_living.py` строит карты живых панелей,
   `make_cover.py` делает обложку для каталога, `pdf_pages.py` достаёт страницы главы из PDF тома,
   `cut_strip.py` режет главу вебтуна на кадры по пустым промежуткам
-- `deploy/` — конфиг nginx и скрипт выкладки
+- `deploy/` — конфиг nginx, служба systemd для API, `animanga-users` для аккаунтов и скрипт выкладки
 
 ## Страницы
 
@@ -142,11 +167,35 @@ sudo ln -s /etc/nginx/sites-available/animanga /etc/nginx/sites-enabled/ && sudo
 sudo certbot --nginx -d DOMAIN
 ```
 
-Пароль для личного раздела — уже после HTTPS (команда сама спросит пароль):
+Служба входа и комментариев: системный пользователь, папка для кода, служба и команда для аккаунтов
+(в `deploy/animanga-api.service` заменить `DOMAIN`):
 
 ```bash
-sudo htpasswd -c /etc/nginx/animanga.htpasswd aiba
+sudo useradd --system --no-create-home --shell /usr/sbin/nologin animanga
 ```
+
+```bash
+sudo mkdir -p /opt/animanga && sudo chown "$USER" /opt/animanga
+```
+
+```bash
+sudo cp animanga-api.service /etc/systemd/system/ && sudo cp animanga-users /usr/local/bin/
+```
+
+Код в `/opt/animanga` положит скрипт выкладки, после первой выкладки:
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now animanga-api
+```
+
+Аккаунт владельца — уже после HTTPS (пароль спросит сам). Владелец видит личный раздел и удаляет
+любые комментарии; все остальные регистрируются на сайте сами и могут только комментировать:
+
+```bash
+animanga-users add aiba --owner
+```
+
+Там же: `animanga-users list`, `passwd ИМЯ`, `ban ИМЯ` (блокирует вход и прячет комментарии), `unban ИМЯ`.
 
 Выкладка — с этой машины, из корня сайта:
 
@@ -154,8 +203,9 @@ sudo htpasswd -c /etc/nginx/animanga.htpasswd aiba
 deploy/deploy.sh user@host https://DOMAIN
 ```
 
-Скрипт отправляет код и картинки без инструментов и проверочных листов. Личный раздел он выкладывает,
-только если `https://DOMAIN/private/` и картинка внутри уже отвечают 401, то есть пароль работает.
+Скрипт отправляет код и картинки без инструментов и проверочных листов, код API — в `/opt/animanga`
+с перезапуском службы. Личный раздел он выкладывает, только если `https://DOMAIN/private/` и картинка
+внутри уже отвечают 401 тому, кто не вошёл.
 
 Black Jack: по условиям автора название и имя указываются без изменений, а о публикации нужно
 сообщить на info@densho810.com в течение месяца.

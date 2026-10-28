@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Вход — Аниманга</title>
+  <!-- Эту же страницу nginx отдаёт с кодом 401 по любому адресу в /private/, если не вошёл владелец,
+       поэтому все пути здесь от корня сайта -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=PT+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+  <nav class="topbar wrap">
+    <a class="brand" href="/">Аниманга</a>
+  </nav>
+
+  <main class="wrap login">
+    <div class="login-card">
+      <p class="login-note" id="private-note" hidden>Этот раздел открыт только владельцу сайта. Войдите, и страница откроется.</p>
+
+      <div id="forms">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" id="tab-login" aria-selected="true" aria-controls="login-form">Вход</button>
+          <button type="button" role="tab" id="tab-register" aria-selected="false" aria-controls="register-form">Регистрация</button>
+        </div>
+
+        <form id="login-form" role="tabpanel" aria-labelledby="tab-login">
+          <label>Имя <input name="name" autocomplete="username" required minlength="3" maxlength="24"></label>
+          <label>Пароль <input name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="200"></label>
+          <p class="form-error" role="alert"></p>
+          <button class="button" type="submit">Войти</button>
+        </form>
+
+        <form id="register-form" role="tabpanel" aria-labelledby="tab-register" hidden>
+          <label>Имя <input name="name" autocomplete="username" required minlength="3" maxlength="24" pattern="[\p{L}\p{N}][\p{L}\p{N}_ .\-]{1,22}[\p{L}\p{N}]"></label>
+          <p class="hint">От 3 до 24 символов: буквы, цифры, пробел, точка, дефис, подчёркивание. Имя видно под комментариями.</p>
+          <label>Пароль <input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="200"></label>
+          <label>Пароль ещё раз <input name="repeat" type="password" autocomplete="new-password" required minlength="8" maxlength="200"></label>
+          <div class="trap" aria-hidden="true"><label>Сайт <input name="website" tabindex="-1" autocomplete="off"></label></div>
+          <p class="form-error" role="alert"></p>
+          <button class="button" type="submit">Зарегистрироваться</button>
+          <p class="hint">Аккаунт нужен, чтобы писать комментарии. Почта не нужна, поэтому пароль восстановить нельзя — запомните его.</p>
+        </form>
+      </div>
+
+      <div id="signed-in" hidden>
+        <p>Вы вошли как <strong id="who"></strong>.</p>
+        <p class="login-note" id="member-note" hidden>Личный раздел открыт только владельцу сайта.</p>
+        <button class="button" type="button" id="logout">Выйти</button>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/login/login.js"></script>
+</body>
+</html>

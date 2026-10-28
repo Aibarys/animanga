@@ -553,9 +553,10 @@ function buildEnd(scene) {
     next.href = scene.next.href;
     next.textContent = scene.next.text;
   }
+  // back — к странице манги со списком глав; без него — в каталог
   const back = el('a', 'back', section);
-  back.href = '../';
-  back.textContent = '← Ко всем историям';
+  back.href = scene.back?.href ?? '../';
+  back.textContent = scene.back?.text ?? '← Ко всем историям';
 }
 
 function buildShot(scene) {

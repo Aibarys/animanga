@@ -209,5 +209,5 @@ export const scenes = [
       { view: 'c', effect: ['shake', 'flash'], strength: 0.6 },
     ],
   },
-  { type: 'end', text: 'Конец главы 3', credit: CREDIT },
+  { type: 'end', text: 'Конец главы 3', credit: CREDIT, back: { href: '../manga/perekur/', text: '← К списку глав' } },
 ];

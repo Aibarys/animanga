@@ -7,6 +7,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }   /* иначе display: grid у форм перебивает hidden */
 
 html, body {
   background: var(--paper);
@@ -153,6 +154,180 @@ a { color: inherit; }
   }
 }
 
+/* ---------- Верхняя полоса: на главную и вход ---------- */
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  min-height: 60px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+}
+.topbar .brand { font-weight: 700; text-decoration: none; }
+.topbar + .hero { padding-top: clamp(24px, 8vh, 96px); }
+
+.account { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 16px; font-weight: 500; }
+.account .who { color: var(--muted); }
+.account a,
+.account button {
+  padding: 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.account a:hover,
+.account button:hover,
+.topbar .brand:hover { color: var(--accent); }
+
+/* ---------- Страница манги: обложка, сведения, главы, обсуждение ---------- */
+
+.manga-head {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: start;
+  padding-top: clamp(16px, 5vh, 56px);
+  padding-bottom: clamp(56px, 10vh, 104px);
+}
+.manga-cover {
+  border: 2px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  background: #fbf9f4;
+}
+.manga-cover img { display: block; width: 100%; height: auto; }
+.manga-info .kicker { color: var(--accent); margin-bottom: 18px; }
+.manga-info h1 {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: clamp(40px, 6.2vw, 80px);
+  line-height: .95;
+  text-transform: uppercase;
+}
+.manga-info .original { margin-top: 12px; color: var(--muted); font-style: italic; }
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 20px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 2px solid var(--ink);
+  font-size: 16px;
+}
+.facts dt { padding-top: 3px; color: var(--muted); font-size: 12px; letter-spacing: .2em; }
+.about { max-width: 36em; margin-top: 24px; font-size: clamp(17px, 1.6vw, 19px); }
+.about + .about { margin-top: 12px; }
+.manga-info a:not(.button):hover { color: var(--accent); }
+
+.button {
+  display: inline-block;
+  margin-top: 30px;
+  padding: 14px 24px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 4px 4px 0 var(--accent);
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: transform .2s, box-shadow .2s;
+}
+.button:hover,
+.button:focus-visible { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--accent); outline: none; }
+
+.chapters { display: grid; gap: 16px; list-style: none; }
+.chapters a {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 10px 22px 10px 10px;
+  background: #fbf9f4;
+  border: 2px solid var(--ink);
+  text-decoration: none;
+  transition: transform .2s, box-shadow .2s;
+}
+.chapters a:hover,
+.chapters a:focus-visible { transform: translate(-3px, -3px); box-shadow: 6px 6px 0 var(--ink); outline: none; }
+.chapters img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border: 1px solid var(--ink); }
+.chapter-num { color: var(--accent); font-size: 12px; letter-spacing: .2em; }
+.chapter-title {
+  margin: 2px 0 4px;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: clamp(19px, 2vw, 23px);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.chapter-text { font-size: 15px; }
+.chapter-meta { color: var(--muted); font-size: 12px; letter-spacing: .2em; white-space: nowrap; }
+.chapters a:hover .chapter-meta { color: var(--accent); }
+
+@media (max-width: 720px) {
+  .manga-head { grid-template-columns: 1fr; }
+  .manga-cover { max-width: 340px; }
+}
+@media (max-width: 560px) {
+  .chapters a { grid-template-columns: 96px minmax(0, 1fr); gap: 14px; padding-right: 14px; }
+  .chapter-meta { grid-column: 2; }
+}
+
+/* ---------- Вход и регистрация ---------- */
+
+.login { display: grid; justify-items: center; padding-bottom: 72px; }
+.login-card {
+  width: min(100%, 440px);
+  margin-top: clamp(16px, 6vh, 64px);
+  padding: 26px clamp(18px, 5vw, 32px) 30px;
+  background: #fbf9f4;
+  border: 2px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.tabs { display: flex; gap: 22px; margin-bottom: 22px; border-bottom: 2px solid var(--ink); }
+.tabs button {
+  margin-bottom: -2px;
+  padding: 0 0 10px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: 700 15px 'Oswald', sans-serif;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.login-card form { display: grid; gap: 14px; }
+.login-card label { display: grid; gap: 6px; font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; }
+.login-card input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  font: 17px 'PT Serif', Georgia, serif;
+}
+.login-card input:focus { outline: none; border-color: var(--accent); }
+.login-card .button { margin-top: 8px; border: 0; cursor: pointer; justify-self: start; }
+.login-card .button:disabled { opacity: .6; cursor: default; }
+.hint { color: var(--muted); font-size: 14px; }
+.form-error { color: var(--accent); font-size: 15px; }
+.form-error:empty { display: none; }
+.login-note { margin-bottom: 18px; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--paper); font-size: 15px; }
+/* Ловушка для ботов: людям поле не видно, боты заполняют всё подряд */
+.trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
 /* ---------- Как устроено ---------- */
 
 .steps {
@@ -195,5 +370,5 @@ footer a:hover { color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) {
   .hero h1 span { animation: none; }
-  .card { transition: none; }
+  .card, .chapters a, .button { transition: none; }
 }
