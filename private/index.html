@@ -13,36 +13,55 @@
 </head>
 <body>
   <nav class="topbar wrap">
-    <a class="brand" href="../">Аниманга</a>
+    <a class="brand" href="../"><img src="../favicon.svg" alt="">Аниманга</a>
     <div class="account" data-account></div>
   </nav>
 
   <header class="hero small wrap">
     <p class="label">Личное · только для вас</p>
     <h1 aria-label="Аниманга"><span style="--i:0">А</span><span style="--i:1">н</span><span style="--i:2">и</span><span style="--i:3">м</span><span style="--i:4">а</span><span style="--i:5">н</span><span style="--i:6">г</span><span style="--i:7">а</span></h1>
+    <p class="lead">Только для вас: две истории, где дым струится, панели дышат, а системные окна загружаются со сбоем.</p>
+    <span class="vertical jp" aria-hidden="true">個人の本棚 · 非公開</span>
   </header>
 
   <main class="wrap">
+    <div class="stats"><div><b>2</b><span>истории</span></div><div><b>8</b><span>глав</span></div><div><b>504</b><span>страницы и кадра</span></div><div><b>1</b><span>читатель — вы</span></div></div>
+
     <section class="section">
-      <h2 class="label">Истории</h2>
+      <h2 class="label section-title"><span class="section-num">01</span>Истории<span class="section-jp jp">物語</span></h2>
       <div class="cards">
         <a class="card" href="manga/perekur/">
           <img src="perekur/pages/cover.jpg" alt="Ямада за кассой — страница из главы 1" width="720" height="874">
           <div class="card-body">
+            <span class="card-no" aria-hidden="true">01</span>
             <p class="label card-kicker">Манга · 3 главы</p>
             <h3>История о перекуре за супермаркетом</h3>
             <p class="label card-credit">Jinushi · Square Enix · перевод KUKAN TEAM</p>
+            <ul class="tags"><li>повседневность</li><li>романтика</li><li>сэйнэн</li></ul>
             <p class="card-text">Уставший офисный работник, кассирша Ямада и перекуры за магазином с Таямой. Дым струится, панели «дышат».</p>
+            <div class="filmstrip" style="--n: 2" aria-hidden="true">
+              <img src="perekur-2/pages/cover.jpg" alt="" loading="lazy">
+              <img src="perekur-3/pages/cover.jpg" alt="" loading="lazy">
+            </div>
+            <p class="label card-facts"><span><b>41</b> страница</span><span><b>5</b> живых панелей</span></p>
             <span class="label card-cta">Открыть →</span>
           </div>
         </a>
         <a class="card" href="manga/orv/">
           <img src="orv-2/pages/cover.jpg" alt="Токкэби парит над вагоном — кадр из главы 2" width="720" height="880">
           <div class="card-body">
+            <span class="card-no" aria-hidden="true">02</span>
             <p class="label card-kicker">Вебтун · пролог и 4 главы</p>
             <h3>Всеведущий читатель</h3>
             <p class="label card-credit">Sing Shong · Sleepy-C · Redice Studio · перевод AssleyTM, Kolabik</p>
+            <ul class="tags"><li>экшен</li><li>фэнтези</li><li>лента</li></ul>
             <p class="card-text">Единственный читатель забытой новеллы видит, как её мир становится реальностью. Системные окна загружаются со сбоем прямо на ленте.</p>
+            <div class="filmstrip" aria-hidden="true">
+              <img src="orv-0/pages/cover.jpg" alt="" loading="lazy">
+              <img src="orv-1/pages/cover.jpg" alt="" loading="lazy">
+              <img src="orv-3/pages/cover.jpg" alt="" loading="lazy">
+            </div>
+            <p class="label card-facts"><span><b>463</b> кадра</span><span><b>19:00</b> начало сценария</span></p>
             <span class="label card-cta">Открыть →</span>
           </div>
         </a>
@@ -51,8 +70,17 @@
   </main>
 
   <footer class="wrap">
-    <p>Коммерческая манга и вебтун в любительском переводе — раздел закрыт паролем и не для того, чтобы делиться ссылкой.</p>
-    <p><a href="../">← Публичная витрина</a></p>
+    <div class="footer-grid compact">
+      <p class="wordmark">Аниманга<span class="jp">動く漫画</span></p>
+      <div>
+        <h3 class="label">Права</h3>
+        <p>Коммерческая манга и вебтун в любительском переводе — раздел закрыт и не для того, чтобы делиться ссылкой.</p>
+      </div>
+      <div>
+        <h3 class="label">Дальше</h3>
+        <ul><li><a href="../">← Публичная витрина</a></li></ul>
+      </div>
+    </div>
   </footer>
 
   <script type="module" src="../auth.js"></script>

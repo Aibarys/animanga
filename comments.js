@@ -66,7 +66,7 @@ async function mount(root) {
   }
 
   const list = el('ol', 'cm-list', wrap);
-  const empty = el('p', 'cm-note cm-empty', wrap, 'Пока никто не написал.');
+  const empty = el('p', 'cm-note cm-empty', wrap, 'Пока никто не написал — будьте первым!');
   empty.hidden = res.data.comments.length > 0;
 
   function item(c) {

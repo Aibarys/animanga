@@ -19,6 +19,20 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
 }
+/* Зерно бумаги поверх всего — как у печатного журнала, а не у пустого экрана */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  opacity: .2;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .06 0 0 0 0 .05 0 0 0 0 .04 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Японские надписи-украшения: шрифт системы, у Oswald нет иероглифов */
+.jp { font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', 'Noto Serif CJK JP', serif; }
 
 a { color: inherit; }
 
@@ -80,6 +94,71 @@ a { color: inherit; }
 }
 .hero.small h1 { font-size: clamp(48px, 9vw, 112px); }
 
+.hero-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: clamp(28px, 4vw, 64px);
+  align-items: center;
+}
+.hero-split h1 { font-size: clamp(52px, 7vw, 96px); white-space: nowrap; }
+.hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; margin-top: 4.5vh; }
+.hero-actions .button { margin-top: 0; }
+.link-more {
+  padding-bottom: 2px;
+  border-bottom: 1px solid currentColor;
+  font: 500 13px 'Oswald', sans-serif;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.link-more:hover { color: var(--accent); }
+
+.collage { position: relative; aspect-ratio: 1 / 1.04; }
+.panel {
+  position: absolute;
+  margin: 0;
+  overflow: hidden;
+  background: #fff;
+  border: 3px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  animation: panel-in .9s cubic-bezier(.2, .8, .2, 1) both;
+}
+.panel img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.panel-a { left: 0; top: 5%; width: 47%; height: 50%; rotate: -3deg; animation-delay: .35s; }
+.panel-b { right: 0; top: 0; width: 50%; height: 40%; rotate: 2.5deg; animation-delay: .5s; }
+.panel-c { left: 7%; right: 1%; bottom: 0; height: 43%; rotate: -1deg; animation-delay: .65s; }
+@keyframes panel-in { from { opacity: 0; translate: 0 48px; } }
+.collage .sfx {
+  position: absolute;
+  z-index: 3;
+  left: -7%;
+  top: -7%;
+  font-size: clamp(54px, 7.6vw, 104px);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--accent);
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  rotate: -12deg;
+  animation: pop .45s 1s cubic-bezier(.3, 1.6, .5, 1) both;
+}
+.bubble-hero { left: 43%; top: 45%; rotate: -4deg; animation: pop .45s 1.25s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes pop { from { opacity: 0; scale: .3; } }
+.vertical {
+  position: absolute;
+  top: 20%;
+  right: max(-28px, -2vw);
+  writing-mode: vertical-rl;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: .5em;
+}
+@media (max-width: 900px) {
+  .hero-split { grid-template-columns: 1fr; }
+  .collage { width: min(100%, 520px); margin: 12px auto 0; }
+  .vertical { display: none; }
+}
+
 /* ---------- Истории ---------- */
 
 .section { padding-bottom: clamp(64px, 12vh, 120px); }
@@ -110,7 +189,7 @@ a { color: inherit; }
   box-shadow: 9px 9px 0 var(--ink);
   outline: none;
 }
-.card img {
+.card > img {
   display: block;
   width: 100%;
   height: 100%;
@@ -119,11 +198,24 @@ a { color: inherit; }
   border-right: 2px solid var(--ink);
 }
 .card-body {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 22px 22px 20px;
 }
+/* Номер истории контуром в углу, как номер выпуска на обложке журнала */
+.card-no {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  font: 700 58px/1 'Oswald', sans-serif;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--ink);
+  opacity: .22;
+  pointer-events: none;
+}
+.card-body h3 { padding-right: 48px; }
 .card-body .label { font-size: 12px; letter-spacing: .2em; }
 .card-kicker { color: var(--accent); }
 .card h3 {
@@ -135,6 +227,8 @@ a { color: inherit; }
 }
 .card-credit { color: var(--muted); }
 .card-text { margin-top: 4px; font-size: 16px; }
+.card-facts { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(14, 13, 12, .35); color: var(--muted); }
+.card-facts b { color: var(--ink); font-weight: 700; }
 .card-cta {
   margin-top: auto;
   padding-top: 14px;
@@ -143,9 +237,100 @@ a { color: inherit; }
 .card:hover .card-cta,
 .card:focus-visible .card-cta { color: var(--accent); }
 
+.tags { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; }
+.tags li {
+  padding: 3px 10px 2px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  font: 500 11px 'Oswald', sans-serif;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+.card .tags { margin-top: 2px; }
+
+/* Плёнка: несколько кадров из истории внизу карточки */
+.filmstrip { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.filmstrip img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border: 1.5px solid var(--ink); filter: grayscale(.15); }
+
+/* ---------- Заголовок раздела: номер, название, иероглифы справа ---------- */
+
+.section-title { display: flex; align-items: baseline; gap: 14px; }
+.section-num { color: var(--accent); font-weight: 700; }
+.section-jp { margin-left: auto; color: var(--muted); font-size: 15px; letter-spacing: .35em; text-transform: none; }
+
+/* ---------- Цифры: коротко, что есть на сайте ---------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr));
+  margin-bottom: clamp(64px, 12vh, 120px);
+  background: #fbf9f4;
+  border: 2px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.stats > div { display: flex; flex-direction: column; gap: 6px; padding: 18px 20px 16px; }
+.stats > div + div { border-left: 2px solid var(--ink); }
+.stats b { font: 700 clamp(34px, 4.6vw, 58px)/1 'Oswald', sans-serif; }
+.stats > div:first-child b { color: var(--accent); }
+.stats span { color: var(--muted); font: 500 12px/1.35 'Oswald', sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+@media (max-width: 640px) {
+  .stats { grid-template-columns: 1fr 1fr; }
+  .stats > div:nth-child(odd) { border-left: 0; }
+  .stats > div:nth-child(n + 3) { border-top: 2px solid var(--ink); }
+}
+
+/* ---------- Облачко реплики ---------- */
+
+.bubble {
+  position: absolute;
+  z-index: 4;
+  padding: .7em 1.3em;
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 50%;
+  font: italic 700 clamp(15px, 1.5vw, 19px)/1.25 'PT Serif', Georgia, serif;
+  white-space: nowrap;
+}
+.bubble::before,
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: 24%;
+  border-style: solid;
+  border-color: var(--ink) transparent transparent;
+}
+/* Верх хвостика заходит на контур: у края эллипс уже закруглился, и без нахлёста между ними щель */
+.bubble::before { bottom: -13px; border-width: 20px 9px 0 4px; }
+.bubble::after { bottom: -7px; left: calc(24% + 3px); border-width: 15px 6px 0 2px; border-top-color: #fff; }
+
+/* ---------- Бегущая строка ---------- */
+
+.ticker-wrap { overflow: hidden; padding: 18px 0; margin-bottom: clamp(48px, 9vh, 96px); }
+.ticker {
+  width: 104%;
+  margin-left: -2%;
+  padding: 12px 0 11px;
+  background: var(--ink);
+  color: var(--paper);
+  border-block: 3px solid var(--accent);
+  transform: rotate(-1.4deg);
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  font: 700 15px 'Oswald', sans-serif;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: ticker 42s linear infinite;
+}
+.ticker-track span { padding-right: 30px; }
+.ticker-track .star { color: var(--accent); }
+@keyframes ticker { to { transform: translateX(-50%); } }
+
 @media (max-width: 560px) {
   .card { grid-template-columns: 1fr; }
-  .card img {
+  .card > img {
     height: auto;
     min-height: 0;
     aspect-ratio: 4 / 3;
@@ -167,7 +352,12 @@ a { color: inherit; }
   letter-spacing: .25em;
   text-transform: uppercase;
 }
-.topbar .brand { font-weight: 700; text-decoration: none; }
+.topbar .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; }
+.brand img { display: block; width: 24px; height: 24px; }
+.nav { display: flex; gap: 22px; margin-right: auto; margin-left: clamp(12px, 3vw, 36px); }
+.nav a { text-decoration: none; color: var(--muted); }
+.nav a:hover { color: var(--accent); }
+@media (max-width: 640px) { .nav { display: none; } }
 .topbar + .hero { padding-top: clamp(24px, 8vh, 96px); }
 
 .account { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 16px; font-weight: 500; }
@@ -192,17 +382,75 @@ a { color: inherit; }
 /* ---------- Страница манги: обложка, сведения, главы, обсуждение ---------- */
 
 .manga-head {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
   gap: clamp(28px, 5vw, 64px);
   align-items: start;
   padding-top: clamp(16px, 5vh, 56px);
-  padding-bottom: clamp(56px, 10vh, 104px);
+  padding-bottom: clamp(36px, 6vh, 64px);
 }
+/* Обложка ещё раз — во всю ширину, бледно и в серых тонах, и растр в углу: шапка не висит на пустом фоне */
+.manga-backdrop {
+  position: absolute;
+  z-index: -1;
+  inset: 0 calc(50% - 50vw);
+  background: center 35% / cover;
+  filter: grayscale(1) contrast(1.2);
+  opacity: .1;
+  -webkit-mask-image: linear-gradient(transparent, #000 18%, #000 45%, transparent);
+  mask-image: linear-gradient(transparent, #000 18%, #000 45%, transparent);
+}
+.manga-head::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0 calc(50% - 50vw) 30% 45%;
+  background-image: radial-gradient(var(--ink) 1.3px, transparent 1.7px);
+  background-size: 11px 11px;
+  -webkit-mask-image: radial-gradient(circle at 85% 15%, #000, transparent 60%);
+  mask-image: radial-gradient(circle at 85% 15%, #000, transparent 60%);
+  opacity: .14;
+}
+/* Название в оригинале — вертикально и контуром, на поле справа */
+.vertical-title {
+  position: absolute;
+  top: clamp(16px, 5vh, 56px);
+  right: max(-96px, calc(50% - 50vw + 16px));
+  writing-mode: vertical-rl;
+  font-size: clamp(30px, 3.4vw, 44px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: 1.2px var(--ink);
+  opacity: .32;
+  pointer-events: none;
+}
+@media (max-width: 1240px) { .vertical-title { display: none; } }
+
 .manga-cover {
+  position: relative;
   border: 2px solid var(--ink);
   box-shadow: 6px 6px 0 var(--ink);
   background: #fbf9f4;
+  rotate: -1.2deg;
+}
+/* Полоска скотча: обложка будто приклеена к странице */
+.manga-cover::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  width: 112px;
+  height: 28px;
+  translate: -50% 0;
+  rotate: 3deg;
+  background: rgba(241, 237, 228, .78);
+  border: 1px solid rgba(14, 13, 12, .12);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
 }
 .manga-cover img { display: block; width: 100%; height: auto; }
 .manga-info .kicker { color: var(--accent); margin-bottom: 18px; }
@@ -214,6 +462,10 @@ a { color: inherit; }
   text-transform: uppercase;
 }
 .manga-info .original { margin-top: 12px; color: var(--muted); font-style: italic; }
+.manga-info .tags { margin-top: 16px; }
+.manga-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 30px; }
+.manga-actions .button { margin-top: 0; }
+.button.ghost { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink), 4px 4px 0 var(--accent); }
 .facts {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
@@ -248,6 +500,7 @@ a { color: inherit; }
 
 .chapters { display: grid; gap: 16px; list-style: none; }
 .chapters a {
+  position: relative;
   display: grid;
   grid-template-columns: 132px minmax(0, 1fr) auto;
   gap: 20px;
@@ -273,6 +526,18 @@ a { color: inherit; }
 .chapter-text { font-size: 15px; }
 .chapter-meta { color: var(--muted); font-size: 12px; letter-spacing: .2em; white-space: nowrap; }
 .chapters a:hover .chapter-meta { color: var(--accent); }
+/* Сколько главы уже прочитано (manga.js): полоска по нижнему краю */
+.chapters a::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  bottom: -2px;
+  width: calc((100% + 4px) * var(--read, 0));
+  height: 4px;
+  background: var(--accent);
+}
+.chapter-state { margin-top: 4px; color: var(--accent); font-size: 11px; letter-spacing: .2em; }
+.chapter-state:empty { display: none; }
 
 @media (max-width: 720px) {
   .manga-head { grid-template-columns: 1fr; }
@@ -285,10 +550,47 @@ a { color: inherit; }
 
 /* ---------- Вход и регистрация ---------- */
 
-.login { display: grid; justify-items: center; padding-bottom: 72px; }
+.login { position: relative; isolation: isolate; display: grid; justify-items: center; padding-bottom: 72px; }
+/* Растровый круг за карточкой, звук дверной ручки и облачко — без картинок: эта же страница
+   отвечает на закрытые адреса */
+.login::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  left: 50%;
+  top: 0;
+  width: min(760px, 130vw);
+  aspect-ratio: 1;
+  translate: -50% -10%;
+  background-image: radial-gradient(var(--ink) 1.3px, transparent 1.7px);
+  background-size: 11px 11px;
+  -webkit-mask-image: radial-gradient(closest-side, #000 25%, transparent);
+  mask-image: radial-gradient(closest-side, #000 25%, transparent);
+  opacity: .13;
+  pointer-events: none;
+}
+.login-sfx {
+  position: absolute;
+  left: -70px;
+  top: -50px;
+  font-size: 66px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--accent);
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  rotate: -14deg;
+  animation: pop .45s .3s cubic-bezier(.3, 1.6, .5, 1) both;
+}
+.login-bubble { right: -46px; top: -40px; rotate: 5deg; animation: pop .45s .55s cubic-bezier(.3, 1.6, .5, 1) both; }
+@media (max-width: 600px) {
+  .login-sfx { left: -6px; top: -44px; font-size: 44px; }
+  .login-bubble { right: -4px; top: -46px; }
+}
 .login-card {
+  position: relative;
   width: min(100%, 440px);
-  margin-top: clamp(16px, 6vh, 64px);
+  margin-top: clamp(64px, 12vh, 112px);
   padding: 26px clamp(18px, 5vw, 32px) 30px;
   background: #fbf9f4;
   border: 2px solid var(--ink);
@@ -351,6 +653,86 @@ a { color: inherit; }
   text-transform: uppercase;
 }
 
+/* ---------- Как устроено: живые схемы вместо пустоты ---------- */
+
+.demo {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  margin-bottom: 14px;
+  overflow: hidden;
+  background: #fbf9f4;
+  border: 2px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+/* 01: страница из четырёх панелей, по ним перелетает рамка камеры, остальное затемнено */
+.demo-camera i { position: absolute; border: 2px solid var(--ink); }
+.demo-camera i:nth-child(1) { left: 4%; top: 5%; width: 53%; height: 43%; background: radial-gradient(var(--ink) 1.1px, transparent 1.5px) 0 0 / 7px 7px; }
+.demo-camera i:nth-child(2) { left: 60%; top: 5%; width: 36%; height: 43%; background: repeating-linear-gradient(115deg, var(--ink) 0 1.5px, transparent 1.5px 7px); }
+.demo-camera i:nth-child(3) { left: 4%; top: 52%; width: 36%; height: 43%; background: linear-gradient(transparent 62%, var(--ink) 62% 66%, transparent 66%), radial-gradient(circle at 50% 42%, var(--ink) 18%, transparent 19%); }
+.demo-camera i:nth-child(4) { left: 43%; top: 52%; width: 53%; height: 43%; background: radial-gradient(var(--ink) 1.6px, transparent 2px) 0 0 / 10px 10px; opacity: .85; }
+.demo-camera b {
+  position: absolute;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 0 999px rgba(14, 13, 12, .38);
+  animation: camera 9s cubic-bezier(.65, 0, .3, 1) infinite;
+}
+@keyframes camera {
+  0%, 18%, 100% { left: 3%; top: 4%; width: 55%; height: 45%; }
+  25%, 43% { left: 59%; top: 4%; width: 38%; height: 45%; }
+  50%, 68% { left: 3%; top: 51%; width: 38%; height: 45%; }
+  75%, 93% { left: 42%; top: 51%; width: 55%; height: 45%; }
+}
+/* 02: линии концентрации и звук удара */
+.demo-fx::before {
+  content: '';
+  position: absolute;
+  inset: -25%;
+  background: repeating-conic-gradient(var(--ink) 0deg 1.3deg, transparent 1.3deg 8deg);
+  -webkit-mask-image: radial-gradient(closest-side, transparent 34%, #000 78%);
+  mask-image: radial-gradient(closest-side, transparent 34%, #000 78%);
+  animation: lines 1.8s ease-in-out infinite;
+}
+.demo-fx span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(40px, 5vw, 60px);
+  font-weight: 900;
+  color: var(--accent);
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  rotate: -8deg;
+  animation: hit 1.8s ease-out infinite;
+}
+@keyframes lines { 50% { scale: 1.07; } }
+@keyframes hit {
+  0%, 100% { scale: 1; translate: 0 0; }
+  6% { scale: 1.3; translate: -3px 2px; }
+  12% { scale: .95; translate: 3px -2px; }
+  20% { scale: 1.02; translate: 0 0; }
+}
+/* 03: растр, город и облачко сдвигаются с разной скоростью */
+.demo-depth i { position: absolute; animation: depth 5s ease-in-out infinite alternate; }
+.demo-depth i:nth-child(1) { inset: -10%; --d: 5px; background: radial-gradient(var(--ink) 1.2px, transparent 1.7px) 0 0 / 8px 8px; opacity: .22; }
+.demo-depth i:nth-child(2) {
+  left: -8%; right: -8%; bottom: 0; height: 58%; --d: 14px;
+  background:
+    linear-gradient(var(--ink), var(--ink)) 4% 100% / 11% 62% no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 17% 100% / 8% 88% no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 28% 100% / 13% 48% no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 44% 100% / 7% 100% no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 54% 100% / 12% 70% no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 70% 100% / 9% 84% no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 82% 100% / 14% 56% no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 97% 100% / 8% 76% no-repeat;
+}
+.demo-depth i:nth-child(3) { left: 50%; top: 12%; width: 38%; height: 27%; --d: 30px; background: #fff; border: 2.5px solid var(--ink); border-radius: 50%; }
+@keyframes depth { from { translate: calc(var(--d) * -1) 0; } to { translate: var(--d) 0; } }
+
+/* Пустые комментарии на страницах каталога — облачко на цвете бумаги */
+:root { --cm-bg: var(--paper); }
+
 /* ---------- Подвал ---------- */
 
 footer {
@@ -368,7 +750,32 @@ footer::before {
 footer p + p { margin-top: 8px; }
 footer a:hover { color: var(--accent); }
 
+.footer-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); gap: 28px 36px; }
+.footer-grid.compact { grid-template-columns: minmax(0, 1.4fr) minmax(0, 2fr) minmax(0, 1fr); }
+.wordmark {
+  font: 700 clamp(40px, 4.6vw, 58px)/.88 'Oswald', sans-serif;
+  text-transform: uppercase;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--ink);
+}
+.wordmark .jp { display: block; margin-top: 12px; color: var(--muted); -webkit-text-stroke: 0; font-size: 14px; letter-spacing: .5em; }
+.footer-grid h3 { margin-bottom: 10px; color: var(--ink); font-size: 12px; }
+.footer-grid ul { display: grid; gap: 6px; list-style: none; }
+.footer-grid a { text-decoration: none; }
+.fineprint {
+  margin-top: 36px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(14, 13, 12, .18);
+  font: 500 11px 'Oswald', sans-serif;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+@media (max-width: 760px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .wordmark { grid-column: 1 / -1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .hero h1 span { animation: none; }
+  .hero h1 span, .panel, .collage .sfx, .bubble-hero, .ticker-track, .demo *, .demo::before, .login-sfx, .login-bubble { animation: none; }
   .card, .chapters a, .button { transition: none; }
 }

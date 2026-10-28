@@ -45,6 +45,13 @@ async function mountAccount(node) {
     out.textContent = 'Выйти';
     out.addEventListener('click', logout);
     node.append(who, out);
+    // Владельцу — короткий путь в закрытый раздел (остальным его не видно и не открыть)
+    if (user.role === 'owner' && !location.pathname.startsWith('/private/')) {
+      const own = document.createElement('a');
+      own.href = '/private/';
+      own.textContent = 'Личное';
+      node.prepend(own);
+    }
   } else {
     const link = document.createElement('a');
     link.href = loginHref();

@@ -16,12 +16,15 @@
 </head>
 <body>
   <nav class="topbar wrap">
-    <a class="brand" href="../../">Аниманга</a>
+    <a class="brand" href="../../"><img src="../../favicon.svg" alt="">Аниманга</a>
     <div class="account" data-account></div>
   </nav>
 
   <main class="wrap">
     <section class="manga-head">
+      <!-- url прямо здесь: из переменной в site.css путь считался бы от таблицы стилей -->
+      <div class="manga-backdrop" style="background-image: url('../../blackjack/pages/cover.jpg')" aria-hidden="true"></div>
+      <p class="vertical-title jp" aria-hidden="true">ブラックジャックによろしく</p>
       <div class="manga-cover">
         <img src="../../blackjack/pages/cover.jpg" alt="Ночной город с высоты — страница из эпизода 1" width="720" height="866">
       </div>
@@ -29,6 +32,7 @@
         <p class="label kicker">Манга · медицинская драма</p>
         <h1>Give My Regards to Black Jack</h1>
         <p class="original">ブラックジャックによろしく — «Передайте привет Блэк Джеку»</p>
+        <ul class="tags"><li>медицина</li><li>драма</li><li>сэйнэн</li><li>на английском</li></ul>
         <dl class="facts">
           <dt class="label">Автор</dt><dd>Сюхо Сато (SHUHO SATO)</dd>
           <dt class="label">Выходила</dt><dd>2002–2006, журнал Weekly Morning (Kodansha), 13 томов</dd>
@@ -37,12 +41,17 @@
         </dl>
         <p class="about">Эйдзиро Сайто только что окончил медицинский и пришёл интерном в университетскую клинику. Зарплаты интерна не хватает на жизнь, и ночами он дежурит в чужой больнице — там, где помочь пациенту, кроме него, некому.</p>
         <p class="about">Сюхо Сато рисует японскую медицину изнутри: деньги, иерархию, очереди и врачей, которым приходится выбирать между правилами и человеком.</p>
-        <a class="button" href="../../blackjack/">Читать эпизод 1 →</a>
+        <div class="manga-actions">
+          <a class="button" href="../../blackjack/">Читать эпизод 1 →</a>
+          <a class="button ghost" data-continue hidden></a>
+        </div>
       </div>
     </section>
 
+    <div class="stats"><div><b>1</b><span>эпизод на сайте</span></div><div><b>56</b><span>страниц</span></div><div><b>13</b><span>томов в оригинале</span></div><div><b>2002</b><span>год первой главы</span></div></div>
+
     <section class="section">
-      <h2 class="label">Эпизоды</h2>
+      <h2 class="label section-title"><span class="section-num">01</span>Эпизоды<span class="section-jp jp">話</span></h2>
       <ol class="chapters">
         <li>
           <a href="../../blackjack/">
@@ -59,17 +68,27 @@
     </section>
 
     <section class="section">
-      <h2 class="label">Обсуждение</h2>
+      <h2 class="label section-title"><span class="section-num">02</span>Обсуждение<span class="section-jp jp">談話</span></h2>
       <div data-comments></div>
     </section>
   </main>
 
   <footer class="wrap">
-    <p>Give My Regards to Black Jack · SHUHO SATO — по условиям автора о свободном вторичном использовании: <a href="https://densho810.com/free/">densho810.com/free</a>.</p>
-    <p><a href="../../">← Все истории</a></p>
+    <div class="footer-grid compact">
+      <p class="wordmark">Аниманга<span class="jp">動く漫画</span></p>
+      <div>
+        <h3 class="label">Права</h3>
+        <p>Give My Regards to Black Jack · SHUHO SATO — по условиям автора о свободном вторичном использовании: <a href="https://densho810.com/free/">densho810.com/free</a>.</p>
+      </div>
+      <div>
+        <h3 class="label">Дальше</h3>
+        <ul><li><a href="../../">← Все истории</a></li></ul>
+      </div>
+    </div>
   </footer>
 
   <script type="module" src="../../auth.js"></script>
   <script type="module" src="../../comments.js"></script>
+  <script type="module" src="../../manga.js"></script>
 </body>
 </html>

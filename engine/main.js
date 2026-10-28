@@ -1,3 +1,5 @@
+import { readProgress, saveProgress } from '../reading.js';
+
 gsap.registerPlugin(ScrollTrigger);
 
 // Каждая история — своя папка: index.html, story.js и pages/ рядом. Движок берёт story.js
@@ -26,6 +28,31 @@ window.lenis = lenis;
 // Тонкая полоска сверху — сколько истории уже пролистано
 const progress = document.querySelector('.progress');
 if (progress) lenis.on('scroll', ({ progress: p }) => { progress.style.transform = `scaleX(${p})`; });
+
+// Докуда дочитана глава — для полосок и «Продолжить» на странице манги (reading.js). Считаем путь
+// до середины финальной сцены, а не до конца страницы: ниже неё ещё комментарии
+const endMark = () => {
+  const end = root.querySelector('.end');
+  if (!end) return 0;
+  const box = end.getBoundingClientRect();
+  return box.top + scrollY + box.height / 2;
+};
+const readY = (p) => Math.max(0, p * endMark() - innerHeight);
+let best = readProgress(location.pathname)?.p ?? 0;
+let savedAt = 0;
+function track(force) {
+  const mark = endMark();
+  if (!mark) return;
+  const p = Math.min(1, (scrollY + innerHeight) / mark);
+  if (p <= best) return;
+  if (force || p >= 1 || p - best >= 0.01 || Date.now() - savedAt > 5000) {
+    best = p;
+    savedAt = Date.now();
+    saveProgress(location.pathname, p);
+  }
+}
+lenis.on('scroll', () => track(false));
+addEventListener('pagehide', () => track(true));
 
 const sizes = {};
 let layered = {};
@@ -718,9 +745,11 @@ async function init() {
   ScrollTrigger.refresh();
   // index.html#p09 — сразу к странице. Lenis ещё помнит пустую страницу и не пустит дальше нуля,
   // поэтому сначала даём ему пересчитать высоту
+  // #at=0.4 — с кнопки «Продолжить»: туда, где остановились в прошлый раз
   if (location.hash) {
     lenis.resize();
-    lenis.scrollTo(location.hash, { immediate: true });
+    const at = /^#at=([\d.]+)$/.exec(location.hash);
+    lenis.scrollTo(at ? readY(Number(at[1])) : location.hash, { immediate: true });
   }
   loader.classList.add('done');
 }

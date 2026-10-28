@@ -14,12 +14,15 @@
 </head>
 <body>
   <nav class="topbar wrap">
-    <a class="brand" href="../../">Аниманга · личное</a>
+    <a class="brand" href="../../"><img src="../../../favicon.svg" alt="">Аниманга · личное</a>
     <div class="account" data-account></div>
   </nav>
 
   <main class="wrap">
     <section class="manga-head">
+      <!-- url прямо здесь: из переменной в site.css путь считался бы от таблицы стилей -->
+      <div class="manga-backdrop" style="background-image: url('../../orv-2/pages/cover.jpg')" aria-hidden="true"></div>
+      <p class="vertical-title jp" aria-hidden="true">전지적 독자 시점</p>
       <div class="manga-cover">
         <img src="../../orv-2/pages/cover.jpg" alt="Токкэби парит над вагоном — кадр из главы 2" width="720" height="880">
       </div>
@@ -27,6 +30,7 @@
         <p class="label kicker">Вебтун · Корея · экшен, фэнтези</p>
         <h1>Всеведущий читатель</h1>
         <p class="original">전지적 독자 시점 — Omniscient Reader’s Viewpoint</p>
+        <ul class="tags"><li>экшен</li><li>фэнтези</li><li>апокалипсис</li><li>лента вебтуна</li></ul>
         <dl class="facts">
           <dt class="label">Роман</dt><dd>Sing Shong (singNsong), 2018–2020</dd>
           <dt class="label">Вебтун</dt><dd>Рисунок Sleepy-C, Redice Studio; Naver Webtoon, с 2020 года</dd>
@@ -35,12 +39,17 @@
         </dl>
         <p class="about">Больше десяти лет Ким Док Чжа читал веб-роман «Три способа выжить в погибшем мире» — и был его единственным читателем. В день, когда роман закончился, Док Чжа едет домой в метро, и в 19:00 мир книги становится реальностью: в вагоне появляется токкэби, а перед глазами — окна сценариев.</p>
         <p class="about">Здесь вебтун читается лентой, как в оригинале, и оживает по кадрам: системные окна загружаются со сбоем и полосой сканирования, по красным сообщениям бегут помехи, а кровь, молнии и сердцебиение срабатывают там, где они есть в рисунке.</p>
-        <a class="button" href="../../orv-0/">Читать с пролога →</a>
+        <div class="manga-actions">
+          <a class="button" href="../../orv-0/">Читать с пролога →</a>
+          <a class="button ghost" data-continue hidden></a>
+        </div>
       </div>
     </section>
 
+    <div class="stats"><div><b>5</b><span>глав с прологом</span></div><div><b>463</b><span>кадра лентой</span></div><div><b>19:00</b><span>мир становится сценарием</span></div><div><b>2020</b><span>старт вебтуна</span></div></div>
+
     <section class="section">
-      <h2 class="label">Главы</h2>
+      <h2 class="label section-title"><span class="section-num">01</span>Главы<span class="section-jp jp">章</span></h2>
       <ol class="chapters">
         <li>
           <a href="../../orv-0/">
@@ -96,17 +105,27 @@
     </section>
 
     <section class="section">
-      <h2 class="label">Заметки</h2>
+      <h2 class="label section-title"><span class="section-num">02</span>Заметки<span class="section-jp jp">筆記</span></h2>
       <div data-comments></div>
     </section>
   </main>
 
   <footer class="wrap">
-    <p>Omniscient Reader · Sing Shong · Sleepy-C · Redice Studio — коммерческий вебтун в любительском переводе: раздел закрыт и не для того, чтобы делиться ссылкой.</p>
-    <p><a href="../../">← Все истории</a></p>
+    <div class="footer-grid compact">
+      <p class="wordmark">Аниманга<span class="jp">動く漫画</span></p>
+      <div>
+        <h3 class="label">Права</h3>
+        <p>Omniscient Reader · Sing Shong · Sleepy-C · Redice Studio — коммерческий вебтун в любительском переводе: раздел закрыт и не для того, чтобы делиться ссылкой.</p>
+      </div>
+      <div>
+        <h3 class="label">Дальше</h3>
+        <ul><li><a href="../../">← Все истории</a></li></ul>
+      </div>
+    </div>
   </footer>
 
   <script type="module" src="../../../auth.js"></script>
   <script type="module" src="../../../comments.js"></script>
+  <script type="module" src="../../../manga.js"></script>
 </body>
 </html>

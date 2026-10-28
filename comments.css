@@ -43,7 +43,27 @@
 
 .cm-list { display: grid; gap: 22px; margin-top: 30px; list-style: none; }
 .cm-list:empty { display: none; }
-.cm-empty { margin-top: 24px; }
+.cm-empty {
+  position: relative;
+  display: inline-block;
+  margin: 28px 0 14px;
+  padding: .8em 1.6em;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: var(--cm-bg, transparent);
+}
+/* Хвостик облачка: тёмный треугольник и поверх него поменьше — цвета фона */
+.cm-empty::before,
+.cm-empty::after {
+  content: '';
+  position: absolute;
+  left: 26%;
+  border-style: solid;
+  border-color: currentColor transparent transparent;
+}
+/* Верх хвостика заходит на контур облачка, иначе между ними щель там, где эллипс уже закруглился */
+.cm-empty::before { bottom: -12px; border-width: 17px 8px 0 3px; }
+.cm-empty::after { bottom: -7px; left: calc(26% + 2.5px); border-width: 12px 5px 0 2px; border-top-color: var(--cm-bg, transparent); }
 .cm-item { padding-top: 14px; border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
 .cm-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
 .cm-name { font-weight: 700; text-transform: none; letter-spacing: .04em; font-size: 15px; }
@@ -66,6 +86,7 @@
 
 /* Под главой: узкая колонка на тёмном фоне читалки */
 .chapter-comments {
+  --cm-bg: var(--ink);
   position: relative;
   z-index: 1;
   max-width: 760px;

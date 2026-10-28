@@ -48,6 +48,9 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
 - `login/` — вход и регистрация (на сервере она же отвечает с кодом 401 на любой адрес в `/private/`),
   `auth.js` — кто вошёл и плашка «Войти» в шапке, `comments.js` + `comments.css` — комментарии
   под главой и на странице манги
+- `reading.js` — докуда дочитана каждая глава, только в localStorage браузера: пишет движок по мере
+  прокрутки, `manga.js` на странице манги рисует полоски у глав и кнопку «Продолжить»
+  (ссылка `#at=0.43` открывает главу там, где остановились)
 - `server/animanga_api.py` — API входа, регистрации и комментариев, только стандартная библиотека
   Python и SQLite; как он защищён — в шапке файла
 - `engine/` — движок: сцены, камера, эффекты, слои, живые панели; `engine/strip.js` — лента вебтуна
@@ -143,6 +146,20 @@ python3 -I tools/make_cover.py private/orv-3 pages/s070.jpg 0 0.08 1 0.549
 
 ```bash
 python3 -I tools/make_cover.py private/orv-4 pages/s064.jpg 0 0 1 0.40
+```
+
+Кадры для коллажа на главной (и ленты кадров в карточке Black Jack):
+
+```bash
+python3 -I tools/make_cover.py blackjack pages/bj-p07.jpg 0.02 0.48 0.66 0.5 hero-smile.jpg 640
+```
+
+```bash
+python3 -I tools/make_cover.py blackjack pages/bj-p47.jpg 0.07 0.04 0.75 0.41 hero-surgery.jpg 720
+```
+
+```bash
+python3 -I tools/make_cover.py blackjack pages/bj-p54.jpg 0 0.6 1 0.4 hero-glare.jpg 900
 ```
 
 ## Выкладка на сервер

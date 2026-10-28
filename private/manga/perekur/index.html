@@ -14,12 +14,15 @@
 </head>
 <body>
   <nav class="topbar wrap">
-    <a class="brand" href="../../">Аниманга · личное</a>
+    <a class="brand" href="../../"><img src="../../../favicon.svg" alt="">Аниманга · личное</a>
     <div class="account" data-account></div>
   </nav>
 
   <main class="wrap">
     <section class="manga-head">
+      <!-- url прямо здесь: из переменной в site.css путь считался бы от таблицы стилей -->
+      <div class="manga-backdrop" style="background-image: url('../../perekur/pages/cover.jpg')" aria-hidden="true"></div>
+      <p class="vertical-title jp" aria-hidden="true">スーパーの裏でヤニ吸うふたり</p>
       <div class="manga-cover">
         <img src="../../perekur/pages/cover.jpg" alt="Ямада за кассой — страница из главы 1" width="720" height="874">
       </div>
@@ -27,6 +30,7 @@
         <p class="label kicker">Манга · Япония · повседневность, романтика</p>
         <h1>История о перекуре за супермаркетом</h1>
         <p class="original">スーパーの裏でヤニ吸うふたり — Smoking Behind the Supermarket with You</p>
+        <ul class="tags"><li>повседневность</li><li>романтика</li><li>комедия</li><li>сэйнэн</li></ul>
         <dl class="facts">
           <dt class="label">Автор</dt><dd>Jinushi</dd>
           <dt class="label">Выходит</dt><dd>С 2022 года: сначала в Twitter, с августа 2022-го — в журнале Monthly Big Gangan (Square Enix)</dd>
@@ -35,12 +39,17 @@
         </dl>
         <p class="about">Сасаки — уставший офисный работник, и единственная радость в его дне — улыбка кассирши Ямады в супермаркете по дороге домой. Однажды на заднем дворе того же магазина он встречает Таяму: она курит, болтает с ним на перекурах и почему-то очень похожа на Ямаду.</p>
         <p class="about">Камера ведёт по панелям, сигаретный дым струится, а на нескольких страницах панели слегка «дышат».</p>
-        <a class="button" href="../../perekur/">Читать с главы 1 →</a>
+        <div class="manga-actions">
+          <a class="button" href="../../perekur/">Читать с главы 1 →</a>
+          <a class="button ghost" data-continue hidden></a>
+        </div>
       </div>
     </section>
 
+    <div class="stats"><div><b>3</b><span>главы на сайте</span></div><div><b>41</b><span>страница</span></div><div><b>5</b><span>живых панелей</span></div><div><b>2022</b><span>год первой главы</span></div></div>
+
     <section class="section">
-      <h2 class="label">Главы</h2>
+      <h2 class="label section-title"><span class="section-num">01</span>Главы<span class="section-jp jp">章</span></h2>
       <ol class="chapters">
         <li>
           <a href="../../perekur/">
@@ -76,17 +85,27 @@
     </section>
 
     <section class="section">
-      <h2 class="label">Заметки</h2>
+      <h2 class="label section-title"><span class="section-num">02</span>Заметки<span class="section-jp jp">筆記</span></h2>
       <div data-comments></div>
     </section>
   </main>
 
   <footer class="wrap">
-    <p>Smoking Behind the Supermarket with You · Jinushi · Square Enix — коммерческая манга в любительском переводе: раздел закрыт и не для того, чтобы делиться ссылкой.</p>
-    <p><a href="../../">← Все истории</a></p>
+    <div class="footer-grid compact">
+      <p class="wordmark">Аниманга<span class="jp">動く漫画</span></p>
+      <div>
+        <h3 class="label">Права</h3>
+        <p>Smoking Behind the Supermarket with You · Jinushi · Square Enix — коммерческая манга в любительском переводе: раздел закрыт и не для того, чтобы делиться ссылкой.</p>
+      </div>
+      <div>
+        <h3 class="label">Дальше</h3>
+        <ul><li><a href="../../">← Все истории</a></li></ul>
+      </div>
+    </div>
   </footer>
 
   <script type="module" src="../../../auth.js"></script>
   <script type="module" src="../../../comments.js"></script>
+  <script type="module" src="../../../manga.js"></script>
 </body>
 </html>
