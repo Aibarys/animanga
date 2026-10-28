@@ -7,6 +7,8 @@ WebGL-шейдер слегка деформирует сам скан, и пе�
 
 Вебтун читается иначе: глава — одна лента кадров встык, как в оригинале, а эффекты привязаны к
 кадрам — системные окна загружаются с глитчем и полосой сканирования, помехи, искры, кровь, сердцебиение.
+В манге про VR-игру свой интерфейс: игровые окна собираются из крупных пикселей со сбоем цвета и голубым
+свечением, а вход в игру и выход из неё рассыпают страницу на пиксели.
 
 Каталог → страница манги (о манге, список глав, обсуждение) → глава. Вход, регистрация и
 комментарии — маленький сервер на стандартном Python и SQLite (`server/`); он же пускает в личный
@@ -22,8 +24,8 @@ python3 -m http.server 5173
 
 - http://localhost:5173/ — каталог
 - `/manga/blackjack/` — страница «Give My Regards to Black Jack», `/blackjack/` — первый эпизод целиком
-- `/private/` — личный раздел, `/private/manga/perekur/`, `/private/manga/orv/` — страницы манги;
-  на сервере открыт только владельцу сайта
+- `/private/` — личный раздел, `/private/manga/perekur/`, `/private/manga/orv/`, `/private/manga/shangrila/` —
+  страницы манги; на сервере открыт только владельцу сайта
 - так вход и комментарии не работают (их блоки просто не показываются); чтобы проверить и их, вместо
   http.server — API вместе с сайтом на http://localhost:8087/, `/private/` закрыт так же, как на сервере:
 
@@ -42,8 +44,8 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
 
 ## Устройство
 
-- `index.html`, `site.css` — каталог; `manga/blackjack/`, `private/manga/perekur/`, `private/manga/orv/` —
-  страницы манги: сведения, главы, обсуждение. Новая глава — строка в списке глав её манги и `next`
+- `index.html`, `site.css` — каталог; `manga/blackjack/`, `private/manga/perekur/`, `private/manga/orv/`,
+  `private/manga/shangrila/` — страницы манги: сведения, главы, обсуждение. Новая глава — строка в списке глав её манги и `next`
   в сценарии предыдущей
 - `login/` — вход и регистрация (на сервере она же отвечает с кодом 401 на любой адрес в `/private/`),
   `auth.js` — кто вошёл и плашка «Войти» в шапке, `comments.js` + `comments.css` — комментарии
@@ -60,6 +62,9 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
   инструментов (`layers.json`, `living.json`) и `pages/` со страницами
 - `private/orv-0/` … `private/orv-4/` — вебтун «Всеведущий читатель», пролог и главы 1–4: в `story.js`
   только эффекты по номерам кадров, сами кадры и `pages/strip.json` режет `cut_strip.py`
+- `private/slf-1/` … `private/slf-10/` и `private/slf-5-5/` — «Рубеж Шангри-Ла», главы 1–10 и бонусная 5.5:
+  страничная манга, как «Перекур», плюс игровые эффекты `hud`, `tone` и переход `pixel` (описаны в шапке
+  `private/slf-1/story.js`)
 - `tools/` — инструменты на Python + Pillow, запускать из корня:
   `detect_panels.py` находит панели, `snap_panels.py` подгоняет рамки к линиям границ (ему нужен
   ещё node), `make_layers.py` режет 2.5D-слои, `make_living.py` строит карты живых панелей,
@@ -85,6 +90,12 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
 ```bash
 python3 -I tools/cut_strip.py private/orv-0 "Всеведущий читатель/Глава 00"
 ```
+
+- `private/slf-1/pages/p01.jpg` … — «Shangri-La Frontier» (Katarina, Ryosuke Fuji, Kodansha), главы 1–10
+  и 5.5 в переводе YONA ANART; коммерческая манга — только для себя. Из папки «Рубеж Шангри-Ла/Глава 01» …
+  «Глава 10», «Глава 05.5» (→ `slf-5-5`) — все картинки по порядку как `p01.jpg`, `p02.jpg`…, кроме
+  последней в главах 1–10 (заметка переводчика с реквизитами). Рамки уже в `story.js`: их нашли
+  `detect_panels.py` и `snap_panels.py`, потом все страницы поправлены вручную
 
 Страницы Black Jack — из PDF тома (нужен `pdftoppm` из poppler):
 
@@ -146,6 +157,56 @@ python3 -I tools/make_cover.py private/orv-3 pages/s070.jpg 0 0.08 1 0.549
 
 ```bash
 python3 -I tools/make_cover.py private/orv-4 pages/s064.jpg 0 0 1 0.40
+```
+
+Обложки «Рубежа Шангри-Ла» — по кадру из главы, а для страницы манги и карточки — цветная обложка главы 8:
+
+```bash
+python3 -I tools/make_cover.py private/slf-8 pages/p01.jpg 0 0.1 0.88 0.67 poster.jpg
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-1 pages/p02.jpg 0.2 0.13 0.4 0.63
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-2 pages/p06.jpg 0 0 1 0.85
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-3 pages/p23.jpg 0 0 1 0.85
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-4 pages/p01.jpg 0 0.2 0.56 0.41
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-5 pages/p03.jpg 0 0 1 0.55
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-5-5 pages/p01.jpg 0.08 0.15 0.84 0.45
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-6 pages/p17.jpg 0 0 1 0.75
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-7 pages/p04.jpg 0 0 1 0.62
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-8 pages/p01.jpg 0.04 0.1 0.8 0.46
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-9 pages/p18.jpg 0 0.36 1 0.64
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-10 pages/p09.jpg 0 0.3 1 0.7
 ```
 
 Кадры для коллажа на главной (и ленты кадров в карточке Black Jack):

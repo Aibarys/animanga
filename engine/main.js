@@ -235,6 +235,180 @@ function createHatch(canvas) {
   return { state, draw };
 }
 
+// ---------- Пиксельный переход: вход в игру и выход из неё ----------
+// Экран собирается из квадратов туши в случайном порядке (сверху вниз, но вразнобой), а у края
+// перехода квадраты светятся цветом игрового интерфейса — как будто картинка грузится по кускам
+
+function createPixels(canvas) {
+  const ctx = canvas.getContext('2d');
+  // cover — квадраты закрывают кадр, reveal — уходят и открывают его (как у штриховки)
+  const state = { cover: 0, reveal: 0 };
+  let cells = [];
+  let size = 24;
+  const EDGE = 0.07;
+
+  function blocks(amount, bottomFirst) {
+    const hud = getComputedStyle(canvas).getPropertyValue('--hud').trim() || '#1fc8f2';
+    for (const c of cells) {
+      const thr = bottomFirst ? c.up : c.down;
+      if (amount >= thr) ctx.fillStyle = INK;
+      else if (amount > thr - EDGE) ctx.fillStyle = hud;
+      else continue;
+      ctx.fillRect(c.x, c.y, size + 1, size + 1);
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (state.reveal >= 1 || state.cover >= 1) { ctx.fillStyle = INK; ctx.fillRect(0, 0, canvas.width, canvas.height); return; }
+    if (state.reveal > 0) blocks(state.reveal, false);
+    if (state.cover > 0) blocks(state.cover, true);
+  }
+
+  function resize() {
+    fitCanvas(canvas);
+    const { width: w, height: h } = canvas;
+    size = Math.max(12, Math.round(Math.min(w, h) / 26));
+    cells = [];
+    for (let y = 0; y < h; y += size) {
+      for (let x = 0; x < w; x += size) {
+        const v = 1 - y / h;   // внизу 0, вверху 1
+        // up: закрывает снизу вверх (нижние — первыми), down: открывает сверху вниз (верхние уходят первыми)
+        cells.push({ x, y, up: Math.min(0.99, 0.6 * Math.random() + 0.4 * v), down: Math.min(0.99, 0.6 * Math.random() + 0.4 * v) });
+      }
+    }
+    draw();
+  }
+
+  canvases.push({ resize });
+  return { state, draw };
+}
+
+// ---------- Игровое окно (hud): статус, меню, «LEVEL UP» внутри игры ----------
+// Когда камера подлетает, окно загружается: крупные пиксели, сбой цветовых каналов, потом рисунок
+// собирается, по окну проходит полоса сканирования, рамка светится. Пока окно на экране, оно мерцает
+// и изредка снова сбоит. Всё лежит внутри камеры — едет с кадром и обрезается рамкой панели
+
+let channelFilters = false;
+function addChannelFilters() {
+  if (channelFilters) return;
+  channelFilters = true;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'channel-filters');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.innerHTML = `
+    <filter id="only-r" color-interpolation-filters="sRGB"><feColorMatrix values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"/></filter>
+    <filter id="only-gb" color-interpolation-filters="sRGB"><feColorMatrix values="0 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"/></filter>`;
+  document.body.appendChild(svg);
+}
+
+const rand = (a, b) => a + Math.random() * (b - a);
+
+function createHud(cam, page, src, box) {
+  addChannelFilters();
+  const [x, y, w, h] = box;
+  const hud = el('div', 'hud', cam);
+  Object.assign(hud.style, { left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` });
+  const pix = el('canvas', 'hud-pix', hud);
+  const split = el('div', 'hud-split', hud);
+  const r = el('div', 'hud-r', split);
+  const gb = el('div', 'hud-gb', split);
+  const slices = [0, 1, 2].map(() => el('div', 'hud-slice', hud));
+  el('div', 'hud-lines', hud);
+  el('div', 'hud-glow', hud);
+  const sweep = el('div', 'hud-sweep', hud);
+  let ready = false;
+  let timer = 0;
+  let blink = null;
+  let amount = 0;
+
+  // Копии окна той же страницей фоном — на них разъезжаются каналы и дёргаются полосы
+  function prepare() {
+    if (ready) return;
+    ready = true;
+    for (const n of [r, gb, ...slices]) {
+      n.style.backgroundImage = `url("${src}")`;
+      n.style.backgroundSize = `${100 / w}% ${100 / h}%`;
+      n.style.backgroundPosition = `${w < 1 ? (x / (1 - w)) * 100 : 0}% ${h < 1 ? (y / (1 - h)) * 100 : 0}%`;
+    }
+  }
+
+  function pixelate(block) {
+    if (!page.complete || !page.naturalWidth) return false;
+    const nw = page.naturalWidth;
+    const nh = page.naturalHeight;
+    pix.width = Math.max(1, Math.round((w * nw) / block));
+    pix.height = Math.max(1, Math.round((h * nh) / block));
+    pix.getContext('2d').drawImage(page, x * nw, y * nh, w * nw, h * nh, 0, 0, pix.width, pix.height);
+    return true;
+  }
+
+  function jolt(strength) {
+    const s = 9 * strength;
+    gsap.set(r, { x: -s * rand(0.5, 1) });
+    gsap.set(gb, { x: s * rand(0.5, 1) });
+    for (const sl of slices) {
+      const top = rand(0, 90);
+      sl.style.clipPath = `inset(${top}% 0 ${Math.max(0, 100 - top - rand(3, 14))}% 0)`;
+      gsap.set(sl, { x: rand(-3, 3) * s, opacity: Math.random() < 0.8 ? 1 : 0 });
+    }
+  }
+
+  function glitch(strength, duration) {
+    prepare();
+    clearInterval(timer);
+    gsap.killTweensOf([split, ...slices]);
+    gsap.set([split, ...slices], { opacity: 1 });
+    jolt(strength);
+    timer = setInterval(() => jolt(strength), 60);
+    gsap.delayedCall(duration, () => {
+      clearInterval(timer);
+      gsap.to([r, gb, ...slices], { x: 0, duration: 0.1 });
+      gsap.to([split, ...slices], { opacity: 0, duration: 0.2, delay: 0.08 });
+    });
+  }
+
+  function boot() {
+    // Крупные пиксели → мельче → рисунок; поверх — сбой каналов
+    if (pixelate(30)) {
+      gsap.killTweensOf(pix);
+      gsap.set(pix, { opacity: 1 });
+      gsap.delayedCall(0.09, () => pixelate(15));
+      gsap.delayedCall(0.18, () => pixelate(7));
+      gsap.to(pix, { opacity: 0, duration: 0.12, delay: 0.26 });
+    }
+    glitch(1, 0.42);
+    gsap.fromTo(hud.querySelector('.hud-glow'), { opacity: 0 }, {
+      keyframes: [{ opacity: 1, duration: 0.05 }, { opacity: 0.2, duration: 0.06 }, { opacity: 1, duration: 0.05 }, { opacity: 0.4, duration: 0.08 }, { opacity: 1, duration: 0.12 }],
+      ease: 'none',
+      delay: 0.2,
+    });
+    gsap.fromTo(sweep, { top: '0%' }, { top: '78%', duration: 0.9, ease: 'power1.inOut', delay: 0.25 });
+    gsap.fromTo(sweep, { opacity: 0 }, { keyframes: [{ opacity: 1, duration: 0.12 }, { opacity: 1, duration: 0.5 }, { opacity: 0, duration: 0.28 }], ease: 'none', delay: 0.25 });
+  }
+
+  function live(on) {
+    hud.classList.toggle('on', on);
+    blink?.kill();
+    blink = null;
+    if (!on) return;
+    const again = () => { glitch(0.35, 0.12); blink = gsap.delayedCall(rand(2.5, 5), again); };
+    blink = gsap.delayedCall(rand(2.5, 5), again);
+  }
+
+  // amount крутит таймлайн, как у дыма: окно загружается, когда камера почти долетела
+  return {
+    get amount() { return amount; },
+    set amount(v) {
+      const was = amount;
+      amount = v;
+      hud.style.opacity = Math.min(1, v * 2);
+      if (v > 0.5 && was <= 0.5) { boot(); live(true); }
+      if (v <= 0.5 && was > 0.5) live(false);
+    },
+  };
+}
+
 // ---------- Линии концентрации (speed lines) ----------
 
 function createSpeedLines(canvas, color = INK) {
@@ -625,6 +799,7 @@ function buildShot(scene) {
   const captions = el('div', 'fx', stage);
   const flash = el('div', 'flash', stage);
   const hatch = createHatch(el('canvas', 'fx', stage));
+  const pixels = [scene.intro, scene.outro].includes('pixel') ? createPixels(el('canvas', 'fx pixels', stage)) : null;
 
   const shot = { stage, cam, tint, layers, W: size.w, H: size.h, st: stateFor(scene.page, steps[0]) };
   const update = () => applyCamera(shot);
@@ -638,8 +813,14 @@ function buildShot(scene) {
     hatch.state.reveal = 1;
     tl.to(hatch.state, { reveal: 0, duration: MOVE, ease: 'power1.in', onUpdate: hatch.draw }, 0);
   }
+  if (scene.intro === 'pixel') {
+    pixels.state.reveal = 1;
+    tl.to(pixels.state, { reveal: 0, duration: MOVE, ease: 'none', onUpdate: pixels.draw }, 0);
+  }
 
   steps.forEach((step, i) => {
+    // tone — цвет тона на этом шаге (яд, тревога); без него — акцент истории
+    if (step.tint) tl.set(tint, { '--tone': step.tone ?? 'var(--accent)' }, t);
     if (i > 0) {
       tl.to(shot.st, { ...stateFor(scene.page, step), duration: MOVE, onUpdate: update }, t);
       t += MOVE;
@@ -655,7 +836,7 @@ function buildShot(scene) {
       const cap = el('div', `caption ${cfg.at ?? 'bottom-left'}`, captions);
       cap.textContent = cfg.text;
       tl.fromTo(cap, { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: 'power3.out' }, arrive + 0.05);
-      if (!isLast || scene.outro === 'hatch') {
+      if (!isLast || scene.outro) {
         tl.to(cap, { autoAlpha: 0, y: -12, duration: 0.25, ease: 'power2.in' }, leave - 0.25);
       }
     }
@@ -677,6 +858,11 @@ function buildShot(scene) {
     if (lives[step.live]) sources.push(lives[step.live]);
     if (step.smoke) sources.push(particles.source('smoke', typeof step.smoke[0] === 'number' ? [step.smoke] : step.smoke));
     if (step.sparkle) sources.push(particles.source('sparkle', step.sparkle === true ? rectOf(scene.page, step.view) : step.sparkle));
+    // hud — игровое окно: true — вся рамка шага, [x, y, w, h] или несколько таких рамок
+    if (step.hud) {
+      const boxes = step.hud === true ? [rectOf(scene.page, step.view)] : typeof step.hud[0] === 'number' ? [step.hud] : step.hud;
+      for (const box of boxes) sources.push(createHud(cam, img, pages[scene.page].src, box));
+    }
     for (const src of sources) {
       tl.to(src, { amount: 1, duration: 0.4, ease: 'none' }, Math.max(0, arrive - 0.4));
       tl.to(src, { amount: 0, duration: 0.4, ease: 'none' }, leave - 0.4);
@@ -685,6 +871,9 @@ function buildShot(scene) {
 
   if (scene.outro === 'hatch') {
     tl.to(hatch.state, { cover: 1, duration: MOVE, ease: 'power1.out', onUpdate: hatch.draw }, t - 0.2);
+  }
+  if (scene.outro === 'pixel') {
+    tl.to(pixels.state, { cover: 1, duration: MOVE, ease: 'none', onUpdate: pixels.draw }, t - 0.2);
   }
 }
 
