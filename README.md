@@ -62,8 +62,8 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
   инструментов (`layers.json`, `living.json`) и `pages/` со страницами
 - `private/orv-0/` … `private/orv-4/` — вебтун «Всеведущий читатель», пролог и главы 1–4: в `story.js`
   только эффекты по номерам кадров, сами кадры и `pages/strip.json` режет `cut_strip.py`
-- `private/slf-1/` … `private/slf-20/`, `private/slf-5-5/` и `private/slf-15-5/` — «Рубеж Шангри-Ла», главы 1–20
-  и бонусные 5.5 и 15.5:
+- `private/slf-1/` … `private/slf-30/`, `private/slf-5-5/`, `private/slf-15-5/` и `private/slf-25-5/` — «Рубеж
+  Шангри-Ла», главы 1–30 и бонусные 5.5, 15.5 и 25.5:
   страничная манга, как «Перекур», плюс игровые эффекты `hud`, `tone` и переход `pixel` (описаны в шапке
   `private/slf-1/story.js`)
 - `tools/` — инструменты на Python + Pillow, запускать из корня:
@@ -92,11 +92,12 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
 python3 -I tools/cut_strip.py private/orv-0 "Всеведущий читатель/Глава 00"
 ```
 
-- `private/slf-1/pages/p01.jpg` … — «Shangri-La Frontier» (Katarina, Ryosuke Fuji, Kodansha), главы 1–20,
-  5.5 и 15.5 в переводе YONA ANART; коммерческая манга — только для себя. Из папки «Рубеж Шангри-Ла/Глава 01» …
-  «Глава 20», «Глава 05.5» (→ `slf-5-5`), «Глава 15.5» (→ `slf-15-5`) — все картинки по порядку как `p01.jpg`,
-  `p02.jpg`…, кроме последней в обычных главах (заметка переводчика с реквизитами); страницы выше 1600 px
-  (главы 12–20 и 15.5) уменьшены до этой высоты с теми же пропорциями. Рамки уже в `story.js`: их нашли
+- `private/slf-1/pages/p01.jpg` … — «Shangri-La Frontier» (Katarina, Ryosuke Fuji, Kodansha), главы 1–30,
+  5.5, 15.5 и 25.5 в переводе YONA ANART; коммерческая манга — только для себя. Из папки «Рубеж Шангри-Ла/Глава 01» …
+  «Глава 30», «Глава 05.5» (→ `slf-5-5`), «Глава 15.5» (→ `slf-15-5`), «Глава 25.5» (→ `slf-25-5`) — все картинки
+  по порядку как `p01.jpg`, `p02.jpg`…, кроме последней в обычных главах (заметка переводчика с реквизитами);
+  страницы выше 1600 px (главы 12–30, 15.5 и 25.5, разворот в главе 30 тоже) уменьшены до этой высоты с теми же
+  пропорциями. Рамки уже в `story.js`: их нашли
   `detect_panels.py` и `snap_panels.py`, потом все страницы поправлены вручную
 
 Страницы Black Jack — из PDF тома (нужен `pdftoppm` из poppler):
@@ -253,6 +254,50 @@ python3 -I tools/make_cover.py private/slf-19 pages/p04.jpg 0.07 0 0.93 0.6
 
 ```bash
 python3 -I tools/make_cover.py private/slf-20 pages/p09.jpg 0.5 0.66 0.48 0.253
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-21 pages/p01.jpg 0.04 0.1 0.92 0.485
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-22 pages/p15.jpg 0.425 0.312 0.5 0.264
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-23 pages/p09.jpg 0.235 0.69 0.535 0.282
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-24 pages/p05.jpg 0 0.27 0.71 0.374
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-25 pages/p01.jpg 0 0 0.86 0.453
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-25-5 pages/p01.jpg 0.03 0 0.94 0.437
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-26 pages/p03.jpg 0.015 0 0.9 0.474
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-27 pages/p17.jpg 0.08 0.48 0.48 0.253
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-28 pages/p05.jpg 0.02 0 0.85 0.448
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-29 pages/p17.jpg 0.19 0.37 0.5 0.2635
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-30 pages/p16.jpg 0.12 0.42 0.5 0.527
 ```
 
 Кадры для коллажа на главной (и ленты кадров в карточке Black Jack):
