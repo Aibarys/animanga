@@ -567,6 +567,36 @@ a { color: inherit; }
 .chapter-state { margin-top: 4px; color: var(--accent); font-size: 11px; letter-spacing: .2em; }
 .chapter-state:empty { display: none; }
 
+/* Длинный список — по десять глав на странице (manga.js); полоска — сколько глав прочитано */
+.chapter-pages { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; scroll-margin-top: 24px; }
+.chapter-page {
+  position: relative;
+  min-width: 92px;
+  padding: 10px 18px;
+  background: #fbf9f4;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: .12em;
+  cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+}
+.chapter-page:hover,
+.chapter-page:focus-visible { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--ink); outline: none; }
+.chapter-page[aria-selected="true"] { background: var(--ink); color: var(--paper); box-shadow: 4px 4px 0 var(--accent); }
+.chapter-page::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  bottom: -2px;
+  width: calc((100% + 4px) * var(--read, 0));
+  height: 4px;
+  background: var(--accent);
+}
+.chapter-next { border: 0; cursor: pointer; }
+
 @media (max-width: 720px) {
   .manga-head { grid-template-columns: 1fr; }
   .manga-cover { max-width: 340px; }
@@ -805,5 +835,5 @@ footer a:hover { color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) {
   .hero h1 span, .panel, .collage .sfx, .bubble-hero, .ticker-track, .demo *, .demo::before, .login-sfx, .login-bubble { animation: none; }
-  .card, .chapters a, .button { transition: none; }
+  .card, .chapters a, .chapter-page, .button { transition: none; }
 }
