@@ -63,8 +63,8 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
   инструментов (`layers.json`, `living.json`) и `pages/` со страницами
 - `private/orv-0/` … `private/orv-4/` — вебтун «Всеведущий читатель», пролог и главы 1–4: в `story.js`
   только эффекты по номерам кадров, сами кадры и `pages/strip.json` режет `cut_strip.py`
-- `private/slf-1/` … `private/slf-50/`, `private/slf-5-5/`, `private/slf-15-5/` и `private/slf-25-5/` — «Рубеж
-  Шангри-Ла», главы 1–50 и бонусные 5.5, 15.5 и 25.5:
+- `private/slf-1/` … `private/slf-70/`, `private/slf-5-5/`, `private/slf-15-5/` и `private/slf-25-5/` — «Рубеж
+  Шангри-Ла», главы 1–70 и бонусные 5.5, 15.5 и 25.5:
   страничная манга, как «Перекур», плюс игровые эффекты `hud`, `tone` и переход `pixel` (описаны в шапке
   `private/slf-1/story.js`)
 - `tools/` — инструменты на Python + Pillow, запускать из корня:
@@ -93,11 +93,11 @@ ANIMANGA_DB=/tmp/animanga-dev.db python3 -I server/animanga_api.py user add ИМ
 python3 -I tools/cut_strip.py private/orv-0 "Всеведущий читатель/Глава 00"
 ```
 
-- `private/slf-1/pages/p01.jpg` … — «Shangri-La Frontier» (Katarina, Ryosuke Fuji, Kodansha), главы 1–50,
+- `private/slf-1/pages/p01.jpg` … — «Shangri-La Frontier» (Katarina, Ryosuke Fuji, Kodansha), главы 1–70,
   5.5, 15.5 и 25.5 в переводе YONA ANART; коммерческая манга — только для себя. Из папки «Рубеж Шангри-Ла/Глава 01» …
-  «Глава 50», «Глава 05.5» (→ `slf-5-5`), «Глава 15.5» (→ `slf-15-5`), «Глава 25.5» (→ `slf-25-5`) — все картинки
+  «Глава 70», «Глава 05.5» (→ `slf-5-5`), «Глава 15.5» (→ `slf-15-5`), «Глава 25.5» (→ `slf-25-5`) — все картинки
   по порядку как `p01.jpg`, `p02.jpg`…, кроме последней в обычных главах (заметка переводчика с реквизитами);
-  страницы выше 1600 px (главы 12–50, 15.5 и 25.5, развороты тоже) уменьшены до этой высоты с теми же
+  страницы выше 1600 px (главы 12–64 и 70, 15.5 и 25.5, развороты тоже) уменьшены до этой высоты с теми же
   пропорциями. Рамки уже в `story.js`: их нашли
   `detect_panels.py` и `snap_panels.py`, потом все страницы поправлены вручную
 
@@ -379,6 +379,86 @@ python3 -I tools/make_cover.py private/slf-49 pages/p01.jpg 0.47 0.0 0.36 0.3795
 
 ```bash
 python3 -I tools/make_cover.py private/slf-50 pages/p07.jpg 0.12 0.02 0.72 0.3794
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-58 pages/p15.jpg 0.02 0.025 0.6 0.316
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-57 pages/p06.jpg 0.1 0.26 0.7 0.369
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-56 pages/p06.jpg 0.29 0.03 0.46 0.2425
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-54 pages/p02.jpg 0.07 0 0.64 0.337
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-55 pages/p06.jpg 0.11 0.42 0.6 0.316
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-59 pages/p07.jpg 0.066 0.47 0.934 0.492
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-53 pages/p15.jpg 0.375 0.05 0.365 0.192
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-60 pages/p10.jpg 0.09 0.258 0.62 0.327
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-52 pages/p13.jpg 0.02 0.37 0.9 0.474
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-51 pages/p04.jpg 0.27 0 0.684 0.36
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-65 pages/p15.jpg 0.22 0.44 0.52 0.2737
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-63 pages/p06.jpg 0.25 0.33 0.75 0.395
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-62 pages/p02.jpg 0.2 0.44 0.8 0.422
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-61 pages/p14.jpg 0.08 0.06 0.9 0.474
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-64 pages/p12.jpg 0.39 0.12 0.58 0.3057
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-66 pages/p02.jpg 0.13 0.205 0.84 0.442
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-67 pages/p06.jpg 0.08 0.27 0.62 0.326
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-70 pages/p08.jpg 0.065 0.42 0.935 0.493
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-68 pages/p04.jpg 0.225 0 0.65 0.6795
+```
+
+```bash
+python3 -I tools/make_cover.py private/slf-69 pages/p11.jpg 0.04 0.06 0.57 0.3
 ```
 
 Кадры для коллажа на главной (и ленты кадров в карточке Black Jack):

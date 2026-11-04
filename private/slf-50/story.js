@@ -299,5 +299,5 @@ export const scenes = [
       { view: 'd', zoom: 1.1 },
     ],
   },
-  { type: 'end', text: 'Конец главы 50', credit: CREDIT, back: { href: '../manga/shangrila/', text: '← К списку глав' } },
+  { type: 'end', text: 'Конец главы 50', credit: CREDIT, next: { href: '../slf-51/', text: 'Глава 51 →' }, back: { href: '../manga/shangrila/', text: '← К списку глав' } },
 ];
