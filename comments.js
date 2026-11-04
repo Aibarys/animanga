@@ -1,7 +1,8 @@
 // Комментарии под главой и на странице манги: <div data-comments></div>, обсуждение — путь страницы
 // ('blackjack', 'manga/blackjack', 'private/orv-2'). Читать может каждый, кому видна страница, писать —
-// после входа; в личном разделе обсуждения видит только владелец сайта. Текст выводится только как
-// текст (textContent), никакого HTML из комментариев на страницу не попадает.
+// после входа; в личном разделе обсуждения видят только владелец и читатели. Удалить можно то, что
+// разрешил сервер (deletable): владельцу — любое, участнику — своё, читателю — ничего. Текст выводится
+// только как текст (textContent), никакого HTML из комментариев на страницу не попадает.
 import { api, loginHref, me } from './auth.js';
 
 const MAX = 2000;
@@ -25,7 +26,6 @@ async function mount(root) {
 
   const res = await api('GET', `/api/comments?thread=${encodeURIComponent(thread)}`);
   if (!res.ok) { box.hidden = true; return; }
-  const { moderator } = res.data;
   root.replaceChildren();
   const wrap = el('div', 'cm', root);
 
@@ -76,7 +76,7 @@ async function mount(root) {
     if (c.owner) el('span', 'cm-badge', head, 'автор сайта');
     const time = el('time', 'cm-time', head, when.format(new Date(c.created * 1000)));
     time.dateTime = new Date(c.created * 1000).toISOString();
-    if (c.mine || moderator) {
+    if (c.deletable) {
       const del = el('button', 'cm-del', head, 'Удалить');
       del.type = 'button';
       del.addEventListener('click', async () => {

@@ -43,4 +43,4 @@ for path in /private/ /private/perekur/pages/cover.jpg; do
 done
 
 rsync -rlptz --delete "${SKIP[@]}" ./private/ "$HOST:$DEST/private/"
-echo "личная часть: $URL/private/ (только владелец)"
+echo "личная часть: $URL/private/ (владелец и читатели)"

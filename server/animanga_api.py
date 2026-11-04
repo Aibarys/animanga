@@ -1,12 +1,17 @@
 """Аниманга: вход, регистрация и комментарии. Только стандартная библиотека Python, база — SQLite.
 
 Сервер слушает 127.0.0.1 и стоит за nginx (адрес /api/). Он же решает, кого пускать в /private/:
-перед каждым запросом туда nginx спрашивает /api/auth (auth_request) и пускает только владельца сайта.
+перед каждым запросом туда nginx спрашивает /api/auth (auth_request) и пускает владельца сайта и читателей.
+
+Роли: member — регистрируется сам, комментирует открытые страницы и удаляет свои комментарии;
+reader — ещё и читает и комментирует личный раздел, но ничего не удаляет; owner — владелец: всё это,
+плашка «автор сайта» и удаление любых комментариев.
 
   python3 -I server/animanga_api.py serve                — API (настройки — переменные окружения ниже)
   python3 -I server/animanga_api.py serve --dev .        — локально: API и сайт из папки на одном порту,
                                                            /private/ закрыт так же, как на сервере
-  python3 -I server/animanga_api.py user add ИМЯ --owner — завести аккаунт; пароль спросит сам
+  python3 -I server/animanga_api.py user add ИМЯ [--owner | --reader] — завести аккаунт; пароль спросит сам
+  python3 -I server/animanga_api.py user role ИМЯ --owner | --reader | --member — сменить роль
   python3 -I server/animanga_api.py user passwd ИМЯ | ban ИМЯ | unban ИМЯ | list
 
 ANIMANGA_DB — файл базы (animanga.db), ANIMANGA_WEBROOT — папка сайта: обсуждение можно открыть только
@@ -60,7 +65,7 @@ CREATE TABLE IF NOT EXISTS users (
   key TEXT NOT NULL UNIQUE,              -- имя в нижнем регистре: «Иван» и «иван» — один человек
   hash BLOB NOT NULL,
   salt BLOB NOT NULL,
-  role TEXT NOT NULL DEFAULT 'member',   -- 'owner' видит личный раздел и удаляет любые комментарии
+  role TEXT NOT NULL DEFAULT 'member',   -- 'member', 'reader' (+ личный раздел) или 'owner' (см. выше)
   banned INTEGER NOT NULL DEFAULT 0,
   created INTEGER NOT NULL
 );
@@ -126,6 +131,15 @@ def is_owner(user):
     return bool(user) and user['role'] == 'owner'
 
 
+def sees_private(user):
+    return bool(user) and user['role'] in ('owner', 'reader')
+
+
+def can_delete(user, author_id):
+    # владелец — любой комментарий, участник — свой, читатель личного раздела — никакой
+    return bool(user) and (user['role'] == 'owner' or (user['role'] == 'member' and author_id == user['id']))
+
+
 class Limit:
     """Не больше count событий за window секунд на ключ. Счёт в памяти: после перезапуска — с нуля."""
 
@@ -173,6 +187,7 @@ def comment_json(row, user):
     return {
         'id': row['id'], 'name': row['name'], 'owner': row['role'] == 'owner', 'body': row['body'],
         'created': row['created'], 'mine': bool(user) and row['user_id'] == user['id'],
+        'deletable': can_delete(user, row['user_id']),
     }
 
 
@@ -203,12 +218,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return self.answer_api(path)
         if not self.dev or self.command not in ('GET', 'HEAD'):
             return self.send_json(404, {'error': 'Нет такого адреса'})
-        # Локально — как nginx на сервере: в /private/ только владелец, остальным страница входа с кодом 401
+        # Локально — как nginx на сервере: в /private/ владелец и читатели, остальным страница входа с кодом 401
         if path.startswith('/private/'):
             con = db()
             try:
                 self.con = con
-                allowed = is_owner(self.current_user())
+                allowed = sees_private(self.current_user())
             finally:
                 con.close()
             if not allowed:
@@ -234,8 +249,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def api(self, path, query):
         user = self.current_user()
         method = self.command
-        if path == '/api/auth':   # для nginx auth_request: 204 — владелец, 401 — все остальные
-            return (204 if is_owner(user) else 401), None, ()
+        if path == '/api/auth':   # для nginx auth_request: 204 — владелец или читатель, 401 — все остальные
+            return (204 if sees_private(user) else 401), None, ()
         if method in ('POST', 'DELETE'):
             self.check_origin()
         if (method, path) == ('GET', '/api/me'):
@@ -325,10 +340,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     # ---------- Комментарии ----------
 
     def check_thread(self, thread, user):
-        # Обсуждение есть только у существующей страницы сайта; личные видит только владелец
+        # Обсуждение есть только у существующей страницы сайта; личные видят только владелец и читатели
         if (not isinstance(thread, str) or len(thread) > 80 or not THREAD_RE.fullmatch(thread)
                 or not (WEBROOT / thread / 'index.html').is_file()
-                or (thread.startswith('private/') and not is_owner(user))):
+                or (thread.startswith('private/') and not sees_private(user))):
             raise ApiError(404, 'Нет такого обсуждения')
 
     def list_comments(self, thread, user):
@@ -337,7 +352,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             'SELECT c.id, c.body, c.created, c.user_id, u.name, u.role FROM comments c JOIN users u ON u.id = c.user_id '
             'WHERE c.thread = ? AND c.deleted = 0 AND u.banned = 0 ORDER BY c.created DESC, c.id DESC LIMIT 300',
             (thread,)).fetchall()
-        return 200, {'comments': [comment_json(r, user) for r in rows], 'moderator': is_owner(user)}, ()
+        return 200, {'comments': [comment_json(r, user) for r in rows]}, ()
 
     def add_comment(self, data, user):
         if not user:
@@ -370,10 +385,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not user:
             raise ApiError(401, 'Войдите, чтобы удалить')
         row = self.con.execute('SELECT user_id, thread FROM comments WHERE id = ? AND deleted = 0', (comment_id,)).fetchone()
-        if not row or (row['thread'].startswith('private/') and not is_owner(user)):
+        if not row or (row['thread'].startswith('private/') and not sees_private(user)):
             raise ApiError(404, 'Нет такого комментария')
-        if row['user_id'] != user['id'] and not is_owner(user):
-            raise ApiError(403, 'Удалять можно только свои комментарии')
+        if not can_delete(user, row['user_id']):
+            raise ApiError(403, 'Удалять можно только свои комментарии' if user['role'] == 'member'
+                           else 'Удалять комментарии этому аккаунту нельзя')
         self.con.execute('UPDATE comments SET deleted = 1 WHERE id = ?', (comment_id,))
         return 200, {'ok': True}, ()
 
@@ -476,16 +492,23 @@ def user_command(args):
             return
         name = clean_name(args.name or '') or sys.exit('Имя — от 3 до 24 символов: буквы, цифры, пробел, точка, дефис, подчёркивание')
         row = con.execute('SELECT * FROM users WHERE key = ?', (name.casefold(),)).fetchone()
+        title = {'owner': ' (владелец)', 'reader': ' (читатель личного раздела)'}.get(args.role, '')
         if args.action == 'add':
             if row:
                 sys.exit('Это имя уже занято')
             salt, h = hash_password(ask_password())
             con.execute('INSERT INTO users (name, key, hash, salt, role, created) VALUES (?, ?, ?, ?, ?, ?)',
-                        (name, name.casefold(), h, salt, 'owner' if args.owner else 'member', now()))
-            print(f"Готово: {name}{' (владелец)' if args.owner else ''}")
+                        (name, name.casefold(), h, salt, args.role or 'member', now()))
+            print(f'Готово: {name}{title}')
             return
         if not row:
             sys.exit('Нет такого аккаунта')
+        if args.action == 'role':
+            if not args.role:
+                sys.exit('Какую роль: --owner, --reader или --member?')
+            con.execute('UPDATE users SET role = ? WHERE id = ?', (args.role, row['id']))
+            print(f'Готово: {name}{title or " (обычный участник)"}')
+            return
         if args.action == 'passwd':
             salt, h = hash_password(ask_password())
             con.execute('UPDATE users SET hash = ?, salt = ? WHERE id = ?', (h, salt, row['id']))
@@ -503,9 +526,15 @@ def main():
     run = sub.add_parser('serve', help='запустить API')
     run.add_argument('--dev', metavar='ПАПКА', help='локально: ещё и раздавать сайт из этой папки')
     users = sub.add_parser('user', help='аккаунты')
-    users.add_argument('action', choices=['add', 'passwd', 'ban', 'unban', 'list'])
+    users.add_argument('action', choices=['add', 'role', 'passwd', 'ban', 'unban', 'list'])
     users.add_argument('name', nargs='?')
-    users.add_argument('--owner', action='store_true', help='владелец: видит личный раздел и удаляет любые комментарии')
+    roles = users.add_mutually_exclusive_group()
+    roles.add_argument('--owner', dest='role', action='store_const', const='owner',
+                       help='владелец: личный раздел, плашка «автор сайта», удаляет любые комментарии')
+    roles.add_argument('--reader', dest='role', action='store_const', const='reader',
+                       help='читатель: читает и комментирует личный раздел, ничего не удаляет')
+    roles.add_argument('--member', dest='role', action='store_const', const='member',
+                       help='обычный участник: только открытые страницы, удаляет свои комментарии')
     args = parser.parse_args()
     if args.command == 'serve':
         serve(args.dev)

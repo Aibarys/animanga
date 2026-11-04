@@ -56,7 +56,7 @@ if (user) {
   $('forms').hidden = true;
   $('signed-in').hidden = false;
   $('who').textContent = user.name;
-  $('member-note').hidden = !(onPrivate && user.role !== 'owner');
+  $('member-note').hidden = !(onPrivate && user.role !== 'owner' && user.role !== 'reader');
   $('private-note').hidden = true;
 } else if (user === undefined) {
   $('login-form').querySelector('.form-error').textContent = 'Вход сейчас недоступен — сервер не отвечает.';
