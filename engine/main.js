@@ -345,6 +345,9 @@ function createHud(cam, page, src, box, section) {
   const [x, y, w, h] = box;
   const hud = el('div', 'hud', cam);
   Object.assign(hud.style, { left: `${x * 100}%`, top: `${y * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` });
+  // Окно из слоёв с наложением, фильтрами и анимацией: Safari держит каждый такой слой в видеопамяти,
+  // даже прозрачный. Пока окна не видно, его нет совсем — иначе 57 окон главы копят ~400 МБ, и вкладка падает
+  hud.style.display = 'none';
   const pix = el('canvas', 'hud-pix', hud);
   const split = el('div', 'hud-split', hud);
   const r = el('div', 'hud-r', split);
@@ -371,6 +374,7 @@ function createHud(cam, page, src, box, section) {
 
   // Сцена уснула — копии отпускают страницу, иначе её картинка так и висит в памяти
   whileNear(section, () => {}, () => {
+    hud.style.display = 'none';
     clearInterval(timer);
     blink?.kill();
     blink = null;
@@ -449,6 +453,7 @@ function createHud(cam, page, src, box, section) {
       const was = amount;
       amount = v;
       hud.style.opacity = Math.min(1, v * 2);
+      hud.style.display = v > 0.001 ? '' : 'none';
       // Сцену, через которую перепрыгнули (#p30, быстрый скролл), не будим: копии страницы не нужны
       if (v > 0.5 && was <= 0.5 && awake.has(section)) { boot(); live(true); }
       if (v <= 0.5 && was > 0.5) live(false);
