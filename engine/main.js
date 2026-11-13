@@ -78,29 +78,65 @@ const loadImage = (src) => new Promise((resolve, reject) => {
   img.src = src;
 });
 
-// Картинки страницы ставятся, когда до её сцены остаётся пара экранов: у полной главы страниц
-// на десятки мегабайт, и ждать их все до первого кадра нельзя
-const nearby = new Map();
-const approach = new IntersectionObserver((entries) => {
+// Сцена живёт, только пока до неё не больше полутора экранов: тогда у неё стоят картинки и холсты
+// во весь экран. Ушла дальше — засыпает и отдаёт память: картинки без src, холсты 0×0. Иначе длинная
+// глава копит гигабайт (60 страниц и 200 холстов), и Safari на телефоне при быстрой прокрутке
+// падает: «Не удалось открыть страницу» или перезагрузка с начала
+const sleepers = new Map();   // сцена → { wake: [], sleep: [] }
+const awake = new Set();
+const watcher = new IntersectionObserver((entries) => {
   for (const entry of entries) {
-    if (!entry.isIntersecting) continue;
-    approach.unobserve(entry.target);
-    nearby.get(entry.target)?.forEach(([node, src]) => { node.src = src; });
-    nearby.delete(entry.target);
+    const near = entry.isIntersecting;
+    if (near === awake.has(entry.target)) continue;
+    if (near) awake.add(entry.target);
+    else awake.delete(entry.target);
+    sleepers.get(entry.target)?.[near ? 'wake' : 'sleep'].forEach((f) => f());
   }
-}, { rootMargin: '200% 0px' });
+}, { rootMargin: '150% 0px' });
 
-function loadNear(section, list) {
-  nearby.set(section, list);
-  approach.observe(section);
+function whileNear(section, wake, sleep) {
+  if (!sleepers.has(section)) {
+    sleepers.set(section, { wake: [], sleep: [] });
+    watcher.observe(section);
+  }
+  const parts = sleepers.get(section);
+  parts.wake.push(wake);
+  parts.sleep.push(sleep);
+  if (awake.has(section)) wake();
 }
 
+// Картинки ставятся, когда сцена подходит, и снимаются, когда она далеко позади или впереди
+function loadNear(section, list) {
+  whileNear(section,
+    () => list.forEach(([node, src]) => { if (node.getAttribute('src') !== src) node.src = src; }),
+    () => list.forEach(([node]) => node.removeAttribute('src')));
+}
+
+const ratio = () => Math.min(window.devicePixelRatio || 1, 2);
+
 function fitCanvas(canvas) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = ratio();
   canvas.width = Math.round(canvas.clientWidth * dpr);
   canvas.height = Math.round(canvas.clientHeight * dpr);
   return dpr;
 }
+
+const freeCanvas = (canvas) => { canvas.width = 0; canvas.height = 0; };
+
+// Холсты сцены (переходы, линии концентрации) получают память, только пока сцена рядом
+function sleepCanvases(section, from) {
+  const own = canvases.slice(from);
+  for (const c of own) {
+    c.section = section;
+    freeCanvas(c.canvas);
+  }
+  whileNear(section, () => own.forEach((c) => c.resize()), () => own.forEach((c) => freeCanvas(c.canvas)));
+}
+
+// Размер не изменился (на телефоне resize прилетает, когда прячется адресная строка) — холст не трогаем
+const fits = ({ canvas }) => canvas
+  && canvas.width === Math.round(canvas.clientWidth * ratio())
+  && canvas.height === Math.round(canvas.clientHeight * ratio());
 
 // ---------- Камера: летает по странице и вырезает панель ----------
 
@@ -231,7 +267,7 @@ function createHatch(canvas) {
     draw();
   }
 
-  canvases.push({ resize });
+  canvases.push({ canvas, resize });
   return { state, draw };
 }
 
@@ -280,7 +316,7 @@ function createPixels(canvas) {
     draw();
   }
 
-  canvases.push({ resize });
+  canvases.push({ canvas, resize });
   return { state, draw };
 }
 
@@ -304,7 +340,7 @@ function addChannelFilters() {
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
-function createHud(cam, page, src, box) {
+function createHud(cam, page, src, box, section) {
   addChannelFilters();
   const [x, y, w, h] = box;
   const hud = el('div', 'hud', cam);
@@ -332,6 +368,16 @@ function createHud(cam, page, src, box) {
       n.style.backgroundPosition = `${w < 1 ? (x / (1 - w)) * 100 : 0}% ${h < 1 ? (y / (1 - h)) * 100 : 0}%`;
     }
   }
+
+  // Сцена уснула — копии отпускают страницу, иначе её картинка так и висит в памяти
+  whileNear(section, () => {}, () => {
+    clearInterval(timer);
+    blink?.kill();
+    blink = null;
+    ready = false;
+    for (const n of [r, gb, ...slices]) n.style.backgroundImage = '';
+    freeCanvas(pix);
+  });
 
   function pixelate(block) {
     if (!page.complete || !page.naturalWidth) return false;
@@ -403,7 +449,8 @@ function createHud(cam, page, src, box) {
       const was = amount;
       amount = v;
       hud.style.opacity = Math.min(1, v * 2);
-      if (v > 0.5 && was <= 0.5) { boot(); live(true); }
+      // Сцену, через которую перепрыгнули (#p30, быстрый скролл), не будим: копии страницы не нужны
+      if (v > 0.5 && was <= 0.5 && awake.has(section)) { boot(); live(true); }
       if (v <= 0.5 && was > 0.5) live(false);
     },
   };
@@ -447,7 +494,7 @@ function createSpeedLines(canvas, color = INK) {
     if (frame++ % 3 === 0 || state.amount < 0.01) draw();
   });
 
-  canvases.push({ resize: () => { fitCanvas(canvas); draw(); } });
+  canvases.push({ canvas, resize: () => { fitCanvas(canvas); draw(); } });
   return { state };
 }
 
@@ -457,18 +504,22 @@ function createSpeedLines(canvas, color = INK) {
 
 const RATE = { smoke: 12, sparkle: 6 };   // сколько частиц в секунду даёт один источник
 
-function createParticles(cam, W, H) {
+function createParticles(cam, W, H, section) {
   const canvas = el('canvas', 'particles', cam);
   const ctx = canvas.getContext('2d');
   const k = Math.min(1, 900 / W);        // дым мягкий, хватает холста меньше страницы
-  canvas.width = Math.round(W * k);
-  canvas.height = Math.round(H * k);
-  const w = canvas.width;
-  const h = canvas.height;
+  const w = Math.round(W * k);
+  const h = Math.round(H * k);
   const sources = [];
   const trails = [];                      // струйка дыма от каждой точки: свои частицы, свой ветер
   let sparks = [];
   let clock = 0;
+  freeCanvas(canvas);
+  whileNear(section, () => { canvas.width = w; canvas.height = h; }, () => {
+    freeCanvas(canvas);
+    sparks = [];
+    trails.forEach((trail) => { trail.parts = []; });
+  });
 
   function spawn(src) {
     if (src.kind === 'smoke') {
@@ -734,7 +785,9 @@ function buildTitle(scene) {
   });
   if (scene.hint) el('p', 'hint', wrap).textContent = scene.hint;
   if (scene.credit) el('p', 'credit', stage).textContent = scene.credit;
+  const before = canvases.length;
   const hatch = createHatch(el('canvas', 'fx', stage));
+  sleepCanvases(section, before);
 
   gsap.from(h1.querySelectorAll('.ch'), {
     yPercent: 110, rotate: 8, opacity: 0, duration: 0.9, ease: 'power4.out', stagger: 0.03, delay: 0.2,
@@ -790,16 +843,18 @@ function buildShot(scene) {
     return { el: node, x: x * size.w, y: y * size.h, ax: spec.anchor[0], ay: spec.anchor[1], depth: spec.depth };
   });
   loadNear(section, lazy);
-  const particles = steps.some((s) => s.smoke || s.sparkle) ? createParticles(cam, size.w, size.h) : null;
+  const particles = steps.some((s) => s.smoke || s.sparkle) ? createParticles(cam, size.w, size.h, section) : null;
   const tint = el('div', 'tint', cam);
   if (DEBUG) addDebugRects(cam, scene.page);
 
   el('div', 'vignette', stage);
+  const before = canvases.length;
   const speed = createSpeedLines(el('canvas', 'fx', stage));
   const captions = el('div', 'fx', stage);
   const flash = el('div', 'flash', stage);
   const hatch = createHatch(el('canvas', 'fx', stage));
   const pixels = [scene.intro, scene.outro].includes('pixel') ? createPixels(el('canvas', 'fx pixels', stage)) : null;
+  sleepCanvases(section, before);
 
   const shot = { stage, cam, tint, layers, W: size.w, H: size.h, st: stateFor(scene.page, steps[0]) };
   const update = () => applyCamera(shot);
@@ -861,7 +916,7 @@ function buildShot(scene) {
     // hud — игровое окно: true — вся рамка шага, [x, y, w, h] или несколько таких рамок
     if (step.hud) {
       const boxes = step.hud === true ? [rectOf(scene.page, step.view)] : typeof step.hud[0] === 'number' ? [step.hud] : step.hud;
-      for (const box of boxes) sources.push(createHud(cam, img, pages[scene.page].src, box));
+      for (const box of boxes) sources.push(createHud(cam, img, pages[scene.page].src, box, section));
     }
     for (const src of sources) {
       tl.to(src, { amount: 1, duration: 0.4, ease: 'none' }, Math.max(0, arrive - 0.4));
@@ -930,7 +985,7 @@ async function init() {
     throw err;
   }
 
-  canvases.forEach((c) => c.resize());
+  canvases.forEach((c) => { if (!c.section) c.resize(); });   // холсты сцен заведёт watcher, когда сцена подойдёт
   ScrollTrigger.refresh();
   // index.html#p09 — сразу к странице. Lenis ещё помнит пустую страницу и не пустит дальше нуля,
   // поэтому сначала даём ему пересчитать высоту
@@ -945,7 +1000,9 @@ async function init() {
 
 window.addEventListener('resize', () => {
   shots.forEach(applyCamera);
-  canvases.forEach((c) => c.resize());
+  canvases.forEach((c) => {
+    if ((!c.section || awake.has(c.section)) && !fits(c)) c.resize();
+  });
 });
 
 init();
