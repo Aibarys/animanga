@@ -1,0 +1,207 @@
+/* Статистика владельца: те же бумага, тушь и красный, карточки с тенью, цифры — Oswald */
+
+.admin { padding-bottom: 96px; }
+.admin-head { padding: clamp(24px, 6vh, 64px) 0 24px; }
+.admin-kicker { color: var(--accent); margin-bottom: 10px; }
+.admin-head h1 { font: 700 clamp(44px, 7vw, 84px)/1 'Oswald', sans-serif; text-transform: uppercase; }
+.admin-sub { margin-top: 12px; color: var(--muted); }
+.admin-sub b { color: var(--ink); }
+.admin-sub .live::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
+}
+
+.admin-gate {
+  max-width: 520px;
+  padding: 22px 24px 26px;
+  background: #fbf9f4;
+  border: 2px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.admin-gate .button { margin-top: 18px; }
+
+/* Пока цифры обновляются, старые остаются на месте, только бледнеют */
+.board { transition: opacity .2s; }
+.board.loading { opacity: .55; }
+
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 22px;
+  margin-bottom: 30px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.range { display: flex; flex-wrap: wrap; border: 2px solid var(--ink); background: #fbf9f4; }
+.range button {
+  padding: 8px 12px;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.range button + button { border-left: 2px solid var(--ink); }
+.range button:hover { color: var(--accent); }
+.range button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.refresh,
+.link-button {
+  padding: 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.refresh:hover,
+.link-button:hover { color: var(--accent); }
+.range button:focus-visible,
+.refresh:focus-visible,
+.link-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.admin-h { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.admin .stats { margin-bottom: 34px; }
+.admin .stats b { font-size: clamp(30px, 4vw, 48px); }
+.admin .stats small { color: var(--muted); font-size: 14px; }
+
+.admin-card {
+  margin-bottom: 34px;
+  padding: 20px clamp(16px, 3vw, 26px) 22px;
+  background: #fbf9f4;
+  border: 2px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--ink);
+  min-width: 0;
+}
+.admin-card h2 { font: 700 15px/1.3 'Oswald', sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+.admin-card h2:not(:first-child) { margin-top: 24px; }
+.admin-card .hint { margin-top: 2px; }
+.card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.card-top .link-button { font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+
+.admin-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 0 34px; }
+@media (max-width: 860px) { .admin-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Столбики по дням ---------- */
+
+.chart { position: relative; margin-top: 14px; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .grid { stroke: #e2dcd0; stroke-width: 1; }
+.chart .axis { fill: var(--muted); font: 500 11px 'Oswald', sans-serif; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+.chart .bar { fill: var(--ink); }
+.chart .hit { fill: transparent; cursor: default; outline: none; }
+.chart .hit:hover + .bar,
+.chart .hit:focus-visible + .bar,
+.chart .bar.on { fill: var(--accent); }
+.chart .hit:focus-visible { stroke: var(--accent); stroke-width: 1; }
+.chart-empty { padding: 40px 0; color: var(--muted); text-align: center; }
+
+.admin-tip {
+  position: fixed;
+  z-index: 300;
+  padding: 8px 11px 9px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 14px;
+  line-height: 1.35;
+  pointer-events: none;
+  box-shadow: 3px 3px 0 var(--accent);
+}
+.admin-tip b { font: 700 20px/1 'Oswald', sans-serif; margin-right: 4px; }
+.admin-tip span { display: block; color: #cfc8bc; font-size: 13px; }
+
+/* ---------- Рейтинги: имя, число, тонкая полоска ---------- */
+
+.bars { display: grid; gap: 9px; margin-top: 12px; list-style: none; }
+.bars li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 2px 12px; }
+.bars .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars a.name { text-decoration: none; }
+.bars a.name:hover { color: var(--accent); text-decoration: underline; }
+.bars .path { margin-left: 8px; color: var(--muted); font-size: 13px; }
+.bars .num { font: 500 15px 'Oswald', sans-serif; font-variant-numeric: tabular-nums; }
+.bars .num small { margin-left: 8px; color: var(--muted); font-size: 13px; }
+.bars .track { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: #ebe5d9; }
+.bars .fill { height: 100%; border-radius: 3px; background: var(--ink); }
+.bars .empty { color: var(--muted); }
+
+.tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  color: var(--accent);
+  font: 500 10px/16px 'Oswald', sans-serif;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+.tag.muted { color: var(--muted); }
+
+/* ---------- Таблицы ---------- */
+
+.table-wrap { margin-top: 12px; overflow-x: auto; }
+.admin table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.admin th {
+  padding: 0 10px 8px 0;
+  border-bottom: 2px solid var(--ink);
+  color: var(--muted);
+  font: 500 11px 'Oswald', sans-serif;
+  letter-spacing: .16em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.admin td { padding: 8px 10px 8px 0; border-bottom: 1px solid #e2dcd0; vertical-align: top; }
+.admin td.n,
+.admin th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.admin td.when { white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+.admin td a { text-decoration: none; }
+.admin td a:hover { color: var(--accent); text-decoration: underline; }
+.ip { font: 14px ui-monospace, 'SF Mono', Menlo, Consolas, monospace; white-space: nowrap; }
+.who-list { color: var(--accent); font-weight: 700; }
+.sub { display: block; color: var(--muted); font-size: 13px; }
+
+.visitor { cursor: pointer; }
+.visitor:hover td,
+.visitor[aria-expanded="true"] td { background: #f3eee4; }
+.visitor:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.visitor td:first-child::before {
+  content: '▸';
+  display: inline-block;
+  width: 14px;
+  color: var(--muted);
+  transition: rotate .15s;
+}
+.visitor[aria-expanded="true"] td:first-child::before { rotate: 90deg; }
+.detail > td { padding: 4px 0 18px 14px; background: #f3eee4; }
+.detail-head { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline; padding-top: 6px; }
+.detail-head a { font-weight: 700; }
+.detail ul { margin: 8px 0 4px; padding-left: 18px; color: var(--muted); font-size: 14px; }
+.detail table { margin-top: 6px; font-size: 14px; }
+.detail td { border-bottom-color: #e2dcd0; }
+
+.admin .more { margin-top: 14px; font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; }
+.admin-foot { margin-top: -18px; }
+
+@media (max-width: 640px) {
+  .admin-filters { gap: 12px 18px; }
+  .range { display: grid; grid-template-columns: repeat(5, auto); width: 100%; }
+  .range button { padding: 8px 2px; font-size: 12px; letter-spacing: .04em; }
+  .admin .stats small { font-size: 13px; }
+}

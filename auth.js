@@ -52,6 +52,12 @@ async function mountAccount(node) {
       own.textContent = 'Личное';
       node.prepend(own);
     }
+    if (user.admin && !location.pathname.startsWith('/admin/')) {
+      const stats = document.createElement('a');
+      stats.href = '/admin/';
+      stats.textContent = 'Статистика';
+      node.prepend(stats);
+    }
   } else {
     const link = document.createElement('a');
     link.href = loginHref();
@@ -61,3 +67,15 @@ async function mountAccount(node) {
 }
 
 document.querySelectorAll('[data-account]').forEach(mountAccount);
+
+// Счётчик для статистики владельца (/admin/): одна запись на открытую страницу. IP, браузер и аккаунт
+// сервер берёт из самого запроса, отсюда — только адрес страницы и чужой сайт, с которого пришли
+function countVisit() {
+  let ref = '';
+  try {
+    const from = new URL(document.referrer);
+    if (from.host !== location.host) ref = from.hostname;
+  } catch {}
+  api('POST', '/api/seen', { path: location.pathname, ref });
+}
+countVisit();

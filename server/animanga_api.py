@@ -1,4 +1,5 @@
-"""Аниманга: вход, регистрация и комментарии. Только стандартная библиотека Python, база — SQLite.
+"""Аниманга: вход, регистрация, комментарии и статистика посещений. Только стандартная библиотека Python,
+база — SQLite.
 
 Сервер слушает 127.0.0.1 и стоит за nginx (адрес /api/). Он же решает, кого пускать в /private/:
 перед каждым запросом туда nginx спрашивает /api/auth (auth_request) и пускает владельца сайта и читателей.
@@ -6,6 +7,10 @@
 Роли: member — регистрируется сам, комментирует открытые страницы и удаляет свои комментарии;
 reader — ещё и читает и комментирует личный раздел, но ничего не удаляет; owner — владелец: всё это,
 плашка «автор сайта» и удаление любых комментариев.
+
+Статистика: каждая открытая страница сайта отправляет /api/seen (auth.js), сервер записывает страницу, IP,
+браузер, сайт, с которого пришли, и аккаунт, если вошли. Смотреть её (/admin/, запросы /api/admin/…) может
+только владелец с именем из ANIMANGA_ADMIN. Записи старше HIT_DAYS дней удаляются.
 
   python3 -I server/animanga_api.py serve                — API (настройки — переменные окружения ниже)
   python3 -I server/animanga_api.py serve --dev .        — локально: API и сайт из папки на одном порту,
@@ -16,16 +21,20 @@ reader — ещё и читает и комментирует личный ра�
 
 ANIMANGA_DB — файл базы (animanga.db), ANIMANGA_WEBROOT — папка сайта: обсуждение можно открыть только
 у существующей страницы, ANIMANGA_ORIGIN — адреса сайта через запятую: запросы, которые что-то меняют,
-принимаются только с них, ANIMANGA_PORT — порт (8087).
+принимаются только с них, ANIMANGA_PORT — порт (8087), ANIMANGA_ADMIN — владелец, которому видна
+статистика (aiba).
 
 Защита: пароли — scrypt с солью, в cookie — случайный токен (HttpOnly, Secure, SameSite=Lax), в базе
-только его хеш. Подбор пароля, регистрации и комментарии ограничены по частоте; IP-адреса в базу
-не пишутся. Комментарии — простой текст, HTML из них на страницу не попадает (comments.js).
+только его хеш. Подбор пароля, регистрации и комментарии ограничены по частоте; IP-адреса пишутся
+только в статистику посещений, к аккаунтам и комментариям не привязываются. Комментарии — простой
+текст, HTML из них на страницу не попадает (comments.js).
 """
 import argparse
+import functools
 import getpass
 import hashlib
 import hmac
+import html
 import http.server
 import json
 import os
@@ -37,7 +46,7 @@ import threading
 import time
 import traceback
 import unicodedata
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -45,18 +54,23 @@ DB = os.environ.get('ANIMANGA_DB', 'animanga.db')
 WEBROOT = Path(os.environ.get('ANIMANGA_WEBROOT', '.')).resolve()
 ORIGINS = {o.strip().rstrip('/') for o in os.environ.get('ANIMANGA_ORIGIN', '').split(',') if o.strip()}
 PORT = int(os.environ.get('ANIMANGA_PORT', '8087'))
+ADMIN = os.environ.get('ANIMANGA_ADMIN', 'aiba').casefold()
 
 COOKIE = 'am_session'
 SESSION_TTL = 30 * 86400
 MAX_REQUEST = 16 * 1024
 MAX_COMMENT = 2000
 MAX_LINKS = 2
+HIT_DAYS = 180                   # сколько дней хранится статистика посещений
 
 NAME_RE = re.compile(r'[^\W_][\w .-]{1,22}[^\W_]')     # 3–24 символа, по краям буква или цифра
 RESERVED = {'admin', 'administrator', 'moderator', 'root', 'animanga', 'админ', 'администратор', 'модератор', 'аниманга'}
 THREAD_RE = re.compile(r'(?:private/)?[a-z0-9][a-z0-9-]*(?:/[a-z0-9][a-z0-9-]*)?')
 LINK_RE = re.compile(r'https?://|www\.', re.I)
 BIDI = dict.fromkeys(map(ord, '‪‫‬‭‮⁦⁧⁨⁩'))   # переворот текста
+HOST_RE = re.compile(r'[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+')
+BOT_RE = re.compile(r'bot\b|bot/|spider|crawl|slurp|headless|lighthouse|python|curl|wget|preview', re.I)
+TITLE_RE = re.compile(r'<title>(.*?)</title>', re.S)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -83,6 +97,19 @@ CREATE TABLE IF NOT EXISTS comments (
   deleted INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS comments_by_thread ON comments (thread, deleted, created);
+CREATE TABLE IF NOT EXISTS hits (
+  id INTEGER PRIMARY KEY,
+  ts INTEGER NOT NULL,
+  ip TEXT NOT NULL,
+  path TEXT NOT NULL,                    -- страница без слешей по краям: '' — главная, 'private/slf-51'
+  ref TEXT,                              -- домен чужого сайта, с которого пришли
+  ua TEXT NOT NULL,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  locked INTEGER NOT NULL DEFAULT 0,     -- закрытая страница без доступа: человек видел форму входа
+  bot INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS hits_by_time ON hits (ts);
+CREATE INDEX IF NOT EXISTS hits_by_ip ON hits (ip, ts);
 """
 
 
@@ -140,6 +167,48 @@ def can_delete(user, author_id):
     return bool(user) and (user['role'] == 'owner' or (user['role'] == 'member' and author_id == user['id']))
 
 
+def is_admin(user):
+    # статистику с IP-адресами видит один человек: владелец с именем ANIMANGA_ADMIN
+    return is_owner(user) and user['key'] == ADMIN
+
+
+@functools.lru_cache(maxsize=4096)
+def ua_info(ua):
+    """Устройство, браузер и система по строке User-Agent — грубо, но для статистики хватает."""
+    device = ('Планшет' if 'iPad' in ua or ('Android' in ua and 'Mobile' not in ua)
+              else 'Телефон' if re.search(r'Mobi|iPhone|Android', ua) else 'Компьютер')
+    browser = next((name for key, name in (
+        ('YaBrowser', 'Яндекс Браузер'), ('Edg', 'Edge'), ('OPR/', 'Opera'), ('Opera', 'Opera'),
+        ('SamsungBrowser', 'Samsung Internet'), ('Firefox', 'Firefox'), ('FxiOS', 'Firefox'),
+        ('CriOS', 'Chrome'), ('Chrome', 'Chrome'), ('Safari', 'Safari')) if key in ua), 'Другой')
+    system = next((name for key, name in (
+        ('iPhone', 'iOS'), ('iPad', 'iOS'), ('Android', 'Android'), ('Windows', 'Windows'),
+        ('Macintosh', 'macOS'), ('CrOS', 'ChromeOS'), ('Linux', 'Linux')) if key in ua), 'Другая')
+    return device, browser, system
+
+
+@functools.lru_cache(maxsize=1024)
+def _title(file, mtime):
+    try:
+        with open(file, encoding='utf-8') as f:
+            m = TITLE_RE.search(f.read(8192))
+    except OSError:
+        return None
+    return html.unescape(m[1]).strip().removesuffix(' — Аниманга') if m else None
+
+
+def page_title(path):
+    # Название берётся из самой страницы на диске, а не из запроса: подделать его нельзя
+    if not path:
+        return 'Главная'
+    f = WEBROOT / path / 'index.html'
+    try:
+        mtime = f.stat().st_mtime
+    except OSError:
+        mtime = 0
+    return _title(str(f), mtime) or path
+
+
 class Limit:
     """Не больше count событий за window секунд на ключ. Счёт в памяти: после перезапуска — с нуля."""
 
@@ -171,6 +240,7 @@ LOGIN_IP = Limit(20, 900)        # неудачных входов с одног
 LOGIN_NAME = Limit(8, 900)       # неудачных входов в одно имя за 15 минут
 POST_FAST = Limit(1, 15)         # комментарий не чаще раза в 15 секунд
 POST_HOUR = Limit(30, 3600)      # и не больше 30 в час
+HIT = Limit(300, 3600)           # записей о просмотрах с одного IP в час — дальше не считаем
 
 
 class ApiError(Exception):
@@ -180,7 +250,7 @@ class ApiError(Exception):
 
 
 def public_user(user):
-    return {'name': user['name'], 'role': user['role']} if user else None
+    return {'name': user['name'], 'role': user['role'], 'admin': is_admin(user)} if user else None
 
 
 def comment_json(row, user):
@@ -268,6 +338,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         m = re.fullmatch(r'/api/comments/(\d{1,12})', path)
         if m and method == 'DELETE':
             return self.delete_comment(int(m[1]), user)
+        if (method, path) == ('POST', '/api/seen'):
+            return self.add_hit(self.read_json(), user)
+        if (method, path) == ('GET', '/api/admin/summary'):
+            return self.stats(query, user)
+        if (method, path) == ('GET', '/api/admin/ip'):
+            return self.ip_hits(query.get('ip', [''])[0], user)
         raise ApiError(404, 'Нет такого адреса')
 
     # ---------- Аккаунты ----------
@@ -392,6 +468,157 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                            else 'Удалять комментарии этому аккаунту нельзя')
         self.con.execute('UPDATE comments SET deleted = 1 WHERE id = ?', (comment_id,))
         return 200, {'ok': True}, ()
+
+    # ---------- Статистика посещений ----------
+
+    def add_hit(self, data, user):
+        # Счётчик не отвечает ошибками: чужие адреса, мусор и лишние запросы просто не записываются
+        path, host = data.get('path'), data.get('ref')
+        path = path.strip('/') if isinstance(path, str) else '-'
+        ip = self.client_ip()
+        if (len(path) > 80 or not (path == '' or THREAD_RE.fullmatch(path))
+                or not (WEBROOT / path / 'index.html').is_file() or HIT.full(ip)):
+            return 204, None, ()
+        HIT.add(ip)
+        own = (self.headers.get('Host') or '').split(':')[0].lower()
+        host = host.lower() if isinstance(host, str) and len(host) <= 100 else ''
+        host = host if HOST_RE.fullmatch(host) and host != own else None
+        ua = (self.headers.get('User-Agent') or '')[:300]
+        locked = (path.startswith('private/') and not sees_private(user)) or (path == 'admin' and not is_admin(user))
+        self.con.execute('INSERT INTO hits (ts, ip, path, ref, ua, user_id, locked, bot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                         (now(), ip, path, host, ua, user['id'] if user else None, int(locked),
+                          int(not ua or bool(BOT_RE.search(ua)))))
+        if secrets.randbelow(500) == 0:
+            self.con.execute('DELETE FROM hits WHERE ts < ?', (now() - HIT_DAYS * 86400,))
+        return 204, None, ()
+
+    def need_admin(self, user):
+        if not user:
+            raise ApiError(401, 'Войдите, чтобы смотреть статистику')
+        if not is_admin(user):
+            raise ApiError(403, 'Статистика открыта только владельцу сайта')
+
+    def stats(self, query, user):
+        self.need_admin(user)
+
+        def number(key, default, low, high):
+            try:
+                return min(max(int(query.get(key, [default])[0]), low), high)
+            except ValueError:
+                return default
+
+        days = number('days', 30, 1, HIT_DAYS)
+        shift = -60 * number('tz', 0, -840, 840)   # tz — как getTimezoneOffset() в браузере: минуты до UTC
+        t = now()
+        since = (t + shift) // 86400 * 86400 - shift - (days - 1) * 86400   # местная полночь days дней назад
+        mine = query.get('mine', ['1'])[0] != '0'   # mine=0 — без заходов самого владельца
+        skip = '' if mine else ' AND (h.user_id IS NULL OR h.user_id != %d)' % user['id']
+        self.con.execute('DELETE FROM hits WHERE ts < ?', (t - HIT_DAYS * 86400,))
+
+        rows = self.con.execute(
+            'SELECT h.ts, h.ip, h.path, h.ref, h.ua, h.user_id, h.locked, u.name FROM hits h '
+            'LEFT JOIN users u ON u.id = h.user_id WHERE h.ts >= ? AND h.bot = 0' + skip + ' ORDER BY h.ts, h.id',
+            (since,)).fetchall()
+        first_seen = dict(self.con.execute(
+            'SELECT ip, MIN(ts) FROM hits WHERE bot = 0 GROUP BY ip HAVING MAX(ts) >= ?', (since,)).fetchall())
+
+        daily = [{'day': time.strftime('%Y-%m-%d', time.gmtime(since + i * 86400 + shift)), 'ips': set(), 'views': 0}
+                 for i in range(days)]
+        hourly = [{'hour': h, 'ips': set(), 'views': 0} for h in range(24)]   # для «сегодня»: один день — по часам
+        pages = defaultdict(lambda: {'views': 0, 'ips': set(), 'locked': 0})
+        refs = defaultdict(lambda: {'views': 0, 'ips': set()})
+        people = {}
+        account_views = Counter()
+        for r in rows:
+            for day in (daily[min((r['ts'] - since) // 86400, days - 1)], hourly[(r['ts'] + shift) // 3600 % 24]):
+                day['ips'].add(r['ip'])
+                day['views'] += 1
+            p = pages[r['path']]
+            p['views'] += 1
+            p['ips'].add(r['ip'])
+            p['locked'] += r['locked']
+            if r['ref']:
+                refs[r['ref']]['views'] += 1
+                refs[r['ref']]['ips'].add(r['ip'])
+            v = people.setdefault(r['ip'], {'ip': r['ip'], 'views': 0, 'paths': set(), 'users': set(), 'locked': 0,
+                                            'first': first_seen.get(r['ip'], r['ts'])})
+            v['views'] += 1
+            v['paths'].add(r['path'])
+            v['locked'] += r['locked']
+            v['last'], v['last_path'], v['ua'] = r['ts'], r['path'], r['ua']
+            if r['name']:
+                v['users'].add(r['name'])
+                account_views[r['user_id']] += 1
+
+        def top(counter, limit=None):
+            return [{'name': k, 'visitors': n} for k, n in counter.most_common(limit)]
+
+        devices, browsers, systems = Counter(), Counter(), Counter()
+        for v in people.values():
+            device, browser, system = ua_info(v.pop('ua'))
+            v.update(device=device, browser=browser, os=system, pages=len(v.pop('paths')), users=sorted(v['users']),
+                     last_title=page_title(v['last_path']))
+            devices[device] += 1
+            browsers[browser] += 1
+            systems[system] += 1
+        visitors = sorted(people.values(), key=lambda v: -v['last'])
+
+        accounts = []
+        for a in self.con.execute(
+                'SELECT u.id, u.name, u.role, u.created, u.banned, '
+                '(SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id AND c.deleted = 0) AS comments, '
+                '(SELECT MAX(ts) FROM hits h WHERE h.user_id = u.id) AS last FROM users u'):
+            accounts.append({'name': a['name'], 'role': a['role'], 'created': a['created'], 'banned': bool(a['banned']),
+                             'comments': a['comments'], 'last': a['last'], 'views': account_views[a['id']]})
+        accounts.sort(key=lambda a: (-(a['last'] or 0), -a['created']))
+
+        one = lambda sql, *args: self.con.execute(sql, args).fetchone()[0]
+        return 200, {
+            'days': days, 'since': since, 'until': t,
+            'start': one('SELECT MIN(ts) FROM hits WHERE bot = 0'),
+            'online': len({r['ip'] for r in rows if r['ts'] >= t - 300}),
+            'totals': {
+                'visitors': len(people), 'views': len(rows),
+                'new': sum(1 for v in people.values() if v['first'] >= since),
+                'signed': len({r['user_id'] for r in rows if r['user_id']}),
+                'locked': sum(1 for v in people.values() if v['locked']),
+                'bots': one('SELECT COUNT(*) FROM hits WHERE ts >= ? AND bot = 1', since),
+            },
+            'site': {
+                'accounts': len(accounts),
+                'roles': dict(Counter(a['role'] for a in accounts)),
+                'new_accounts': sum(1 for a in accounts if a['created'] >= since),
+                'comments': one('SELECT COUNT(*) FROM comments WHERE deleted = 0'),
+                'new_comments': one('SELECT COUNT(*) FROM comments WHERE deleted = 0 AND created >= ?', since),
+                'views': one('SELECT COUNT(*) FROM hits WHERE bot = 0'),
+                'visitors': one('SELECT COUNT(DISTINCT ip) FROM hits WHERE bot = 0'),
+            },
+            'daily': [{'day': d['day'], 'visitors': len(d['ips']), 'views': d['views']} for d in daily],
+            'hourly': [{'hour': h['hour'], 'visitors': len(h['ips']), 'views': h['views']} for h in hourly] if days == 1 else None,
+            'pages': [{'path': k, 'title': page_title(k), 'views': p['views'], 'visitors': len(p['ips']), 'locked': p['locked']}
+                      for k, p in sorted(pages.items(), key=lambda kv: (-len(kv[1]['ips']), -kv[1]['views']))[:40]],
+            'refs': [{'host': k, 'views': r['views'], 'visitors': len(r['ips'])}
+                     for k, r in sorted(refs.items(), key=lambda kv: -len(kv[1]['ips']))[:20]],
+            'devices': top(devices), 'browsers': top(browsers), 'systems': top(systems),
+            'visitors': visitors[:300],
+            'accounts': accounts[:200],
+            'recent': [{'ts': r['ts'], 'ip': r['ip'], 'path': r['path'], 'title': page_title(r['path']),
+                        'user': r['name'], 'ref': r['ref'], 'locked': bool(r['locked'])} for r in rows[:-81:-1]],
+        }, ()
+
+    def ip_hits(self, ip, user):
+        self.need_admin(user)
+        rows = self.con.execute(
+            'SELECT h.ts, h.path, h.ref, h.ua, h.locked, h.bot, u.name FROM hits h LEFT JOIN users u ON u.id = h.user_id '
+            'WHERE h.ip = ? ORDER BY h.ts DESC, h.id DESC LIMIT 300', (ip[:64],)).fetchall()
+        agents = Counter(r['ua'] for r in rows)
+        return 200, {
+            'ip': ip[:64],
+            'total': self.con.execute('SELECT COUNT(*) FROM hits WHERE ip = ?', (ip[:64],)).fetchone()[0],
+            'agents': [dict(zip(('device', 'browser', 'os'), ua_info(ua)), ua=ua, views=n) for ua, n in agents.most_common(10)],
+            'hits': [{'ts': r['ts'], 'path': r['path'], 'title': page_title(r['path']), 'ref': r['ref'], 'user': r['name'],
+                      'locked': bool(r['locked']), 'bot': bool(r['bot'])} for r in rows],
+        }, ()
 
     # ---------- Запрос и ответ ----------
 
