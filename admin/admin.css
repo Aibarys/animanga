@@ -103,6 +103,10 @@
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart .grid { stroke: #e2dcd0; stroke-width: 1; }
 .chart .axis { fill: var(--muted); font: 500 11px 'Oswald', sans-serif; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+/* Наведение ловит прозрачная полоса во всю высоту (.hit), а столбик над ней мышь пропускает —
+   иначе над самим столбиком подсказка пропадала бы */
+.chart .bar,
+.chart .axis { pointer-events: none; }
 .chart .bar { fill: var(--ink); }
 .chart .hit { fill: transparent; cursor: default; outline: none; }
 .chart .hit:hover + .bar,
