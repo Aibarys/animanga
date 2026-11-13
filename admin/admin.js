@@ -49,6 +49,11 @@ function svg(tag, attrs = {}) {
 }
 
 const tag = (text, muted) => el('span', { class: muted ? 'tag muted' : 'tag', text });
+
+// Место по IP ищет сервер в базе DB-IP: город там по-английски, страна по-русски, район и область — в подсказке
+const placeTitle = (p) => p && [p.district, p.region, p.country].filter(Boolean).join(', ');
+const placeCell = (p) => el('td', { title: placeTitle(p) }, p ? (p.city ?? p.region ?? p.country) : '—',
+  p && (p.city || p.region) && el('span', { class: 'sub', text: p.country }));
 const pageHref = (path) => (path ? `/${path}/` : '/');
 
 function when(ts) {
@@ -124,7 +129,8 @@ function render() {
   ]);
   $('foot').textContent = `Боты и сервисы предпросмотра ссылок не считаются (за период — ${num.format(totals.bots)} ` +
     `${plural(totals.bots, ['запрос', 'запроса', 'запросов'])}). Открыть закрытые страницы без доступа пытались ` +
-    `${num.format(totals.locked)} ${plural(totals.locked, ['адрес', 'адреса', 'адресов'])}. Записи старше 180 дней удаляются сами.`;
+    `${num.format(totals.locked)} ${plural(totals.locked, ['адрес', 'адреса', 'адресов'])}. Записи старше 180 дней удаляются сами.` +
+    (data.geo ? '' : ' База стран и городов на сервере не найдена — поэтому мест нет (python3 -I animanga_api.py geoip).');
 
   chart();
   bars($('pages'), data.pages, {
@@ -136,6 +142,13 @@ function render() {
   });
   bars($('refs'), data.refs, { name: (r) => r.host, value: (r) => r.visitors, extra: (r) => `${num.format(r.views)} просм.` });
   for (const key of ['devices', 'browsers', 'systems']) bars($(key), data[key], { name: (d) => d.name, value: (d) => d.visitors });
+  bars($('countries'), data.countries, { name: (c) => c.name ?? c.cc, value: (c) => c.visitors });
+  bars($('cities'), data.cities, {
+    name: (c) => c.name,
+    note: (c) => el('small', { class: 'path', text: c.cc }),
+    value: (c) => c.visitors,
+  });
+  $('geo-credit').hidden = !data.geo;
   visitors();
   accounts();
   recent();
@@ -274,6 +287,7 @@ function visitors() {
         v.first >= data.since && tag('новый', true),
         v.locked > 0 && tag('стучался в закрытое'),
         v.users.length > 0 && el('span', { class: 'sub who-list', text: v.users.join(', ') })),
+      placeCell(v.place),
       el('td', { class: 'when', text: ago(v.last) }),
       el('td', { class: 'n', text: num.format(v.views) }),
       el('td', { class: 'n', text: num.format(v.pages) }),
@@ -285,7 +299,7 @@ function visitors() {
     row.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && e.target === row && (e.preventDefault(), toggle()));
     return row;
   });
-  node.replaceChildren(table([['IP и аккаунт'], ['Был'], ['Просм.', 1], ['Стр.', 1], ['Устройство'], ['Последняя страница'], ['Впервые']], rows),
+  node.replaceChildren(table([['IP и аккаунт'], ['Где'], ['Был'], ['Просм.', 1], ['Стр.', 1], ['Устройство'], ['Последняя страница'], ['Впервые']], rows),
     more(list.length - shown, () => { shown = list.length; visitors(); }));
 }
 
@@ -296,16 +310,18 @@ async function openVisitor(row, ip) {
     return;
   }
   row.setAttribute('aria-expanded', 'true');
-  const cell = el('td', { colspan: 7 }, el('p', { class: 'hint', text: 'Загружаю…' }));
+  const cell = el('td', { colspan: 8 }, el('p', { class: 'hint', text: 'Загружаю…' }));
   row.after(el('tr', { class: 'detail' }, cell));
   const r = await api('GET', `/api/admin/ip?ip=${encodeURIComponent(ip)}`);
   if (!r.ok) return cell.replaceChildren(el('p', { class: 'form-error', text: r.data.error ?? 'Не получилось загрузить' }));
   const d = r.data;
+  const p = d.place;
   cell.replaceChildren(
     el('div', { class: 'detail-head' },
       el('span', {}, 'Всего заходов с этого адреса: ', el('b', { text: num.format(d.total) })),
-      // Где находится адрес — смотрит внешний сервис, и только когда сам нажмёшь на ссылку
-      el('a', { href: `https://ipinfo.io/${encodeURIComponent(d.ip)}`, target: '_blank', rel: 'noopener noreferrer', text: 'Где это? ↗' })),
+      p && el('span', {}, 'Где: ', el('b', { text: [p.city, p.district, p.region, p.country].filter(Boolean).join(', ') })),
+      // Провайдера знает только внешний сервис — адрес уходит туда, только когда сам нажмёшь на ссылку
+      el('a', { href: `https://ipinfo.io/${encodeURIComponent(d.ip)}`, target: '_blank', rel: 'noopener noreferrer', text: 'Провайдер — на ipinfo.io ↗' })),
     el('ul', {}, d.agents.map((a) => el('li', { title: a.ua },
       `${a.device} · ${a.browser} · ${a.os} — ${num.format(a.views)} ${plural(a.views, ['заход', 'захода', 'заходов'])}`))),
     table([['Когда'], ['Страница'], ['Откуда'], ['Аккаунт']], d.hits.map((h) => el('tr', {},
@@ -328,9 +344,10 @@ function accounts() {
 function recent() {
   const list = data.recent;
   if (!list.length) return $('recent').replaceChildren(el('p', { class: 'hint', text: 'За этот период заходов нет' }));
-  $('recent').replaceChildren(table([['Когда'], ['IP'], ['Страница'], ['Аккаунт'], ['Откуда']], list.slice(0, shownRecent).map((h) => el('tr', {},
+  $('recent').replaceChildren(table([['Когда'], ['IP'], ['Где'], ['Страница'], ['Аккаунт'], ['Откуда']], list.slice(0, shownRecent).map((h) => el('tr', {},
     el('td', { class: 'when', text: when(h.ts) }),
     el('td', { class: 'ip', text: h.ip }),
+    placeCell(h.place),
     el('td', {}, el('a', { href: pageHref(h.path), text: h.title }), h.locked && tag('вход')),
     el('td', { class: 'who-list', text: h.user ?? '' }),
     el('td', { text: h.ref ?? '' })))),

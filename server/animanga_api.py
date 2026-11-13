@@ -10,7 +10,9 @@ reader — ещё и читает и комментирует личный ра�
 
 Статистика: каждая открытая страница сайта отправляет /api/seen (auth.js), сервер записывает страницу, IP,
 браузер, сайт, с которого пришли, и аккаунт, если вошли. Смотреть её (/admin/, запросы /api/admin/…) может
-только владелец с именем из ANIMANGA_ADMIN. Записи старше HIT_DAYS дней удаляются.
+только владелец с именем из ANIMANGA_ADMIN. Записи старше HIT_DAYS дней удаляются. Страну и город по IP
+сервер ищет сам, в бесплатной базе DB-IP «IP to City Lite» (CC BY 4.0) рядом с базой сайта: адреса никуда
+не отправляются. Без базы статистика просто показывает адреса без мест.
 
   python3 -I server/animanga_api.py serve                — API (настройки — переменные окружения ниже)
   python3 -I server/animanga_api.py serve --dev .        — локально: API и сайт из папки на одном порту,
@@ -18,11 +20,13 @@ reader — ещё и читает и комментирует личный ра�
   python3 -I server/animanga_api.py user add ИМЯ [--owner | --reader] — завести аккаунт; пароль спросит сам
   python3 -I server/animanga_api.py user role ИМЯ --owner | --reader | --member — сменить роль
   python3 -I server/animanga_api.py user passwd ИМЯ | ban ИМЯ | unban ИМЯ | list
+  python3 -I server/animanga_api.py geoip [--force]     — скачать базу стран и городов, если вышла новая
+                                                           (DB-IP выпускает её раз в месяц)
 
 ANIMANGA_DB — файл базы (animanga.db), ANIMANGA_WEBROOT — папка сайта: обсуждение можно открыть только
 у существующей страницы, ANIMANGA_ORIGIN — адреса сайта через запятую: запросы, которые что-то меняют,
 принимаются только с них, ANIMANGA_PORT — порт (8087), ANIMANGA_ADMIN — владелец, которому видна
-статистика (aiba).
+статистика (aiba), ANIMANGA_GEOIP — файл базы стран и городов (dbip-city-lite.mmdb рядом с ANIMANGA_DB).
 
 Защита: пароли — scrypt с солью, в cookie — случайный токен (HttpOnly, Secure, SameSite=Lax), в базе
 только его хеш. Подбор пароля, регистрации и комментарии ограничены по частоте; IP-адреса пишутся
@@ -32,25 +36,34 @@ ANIMANGA_DB — файл базы (animanga.db), ANIMANGA_WEBROOT — папка
 import argparse
 import functools
 import getpass
+import gzip
 import hashlib
 import hmac
 import html
 import http.server
+import ipaddress
 import json
+import mmap
 import os
 import re
 import secrets
+import shutil
 import sqlite3
+import struct
 import sys
 import threading
 import time
 import traceback
 import unicodedata
+import urllib.error
+import urllib.request
 from collections import Counter, defaultdict, deque
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 DB = os.environ.get('ANIMANGA_DB', 'animanga.db')
+GEOIP = os.environ.get('ANIMANGA_GEOIP') or str(Path(DB).resolve().parent / 'dbip-city-lite.mmdb')
+GEOIP_URL = 'https://download.db-ip.com/free/dbip-city-lite-{month}.mmdb.gz'
 WEBROOT = Path(os.environ.get('ANIMANGA_WEBROOT', '.')).resolve()
 ORIGINS = {o.strip().rstrip('/') for o in os.environ.get('ANIMANGA_ORIGIN', '').split(',') if o.strip()}
 PORT = int(os.environ.get('ANIMANGA_PORT', '8087'))
@@ -207,6 +220,180 @@ def page_title(path):
     except OSError:
         mtime = 0
     return _title(str(f), mtime) or path
+
+
+class MaxMindDB:
+    """Чтение базы в формате MaxMind DB (.mmdb) — ровно столько, сколько нужно для поиска по IP.
+    Формат: двоичное дерево по битам адреса, в листьях — ссылки на записи в разделе данных."""
+
+    MARKER = b'\xab\xcd\xefMaxMind.com'
+
+    def __init__(self, path):
+        with open(path, 'rb') as f:
+            self.buf = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+        meta = self.buf.rfind(self.MARKER, max(0, len(self.buf) - 128 * 1024))
+        if meta < 0:
+            raise ValueError('это не база MaxMind DB')
+        self.meta = self.decode(meta + len(self.MARKER), meta + len(self.MARKER))[0]
+        self.nodes, self.record = self.meta['node_count'], self.meta['record_size']
+        if self.record not in (24, 28, 32):
+            raise ValueError(f'неизвестный размер записи: {self.record}')
+        self.tree = self.record * 2 // 8 * self.nodes
+        self.ipv4 = 0   # в базе с IPv6 адреса IPv4 лежат под 96 нулевыми битами
+        if self.meta['ip_version'] == 6:
+            for _ in range(96):
+                if self.ipv4 >= self.nodes:
+                    break
+                self.ipv4 = self.child(self.ipv4, 0)
+
+    def child(self, node, bit):
+        b = self.buf
+        if self.record == 24:
+            o = node * 6 + bit * 3
+            return int.from_bytes(b[o:o + 3], 'big')
+        if self.record == 28:
+            o = node * 7
+            if bit:
+                return (b[o + 3] & 0x0F) << 24 | int.from_bytes(b[o + 4:o + 7], 'big')
+            return (b[o + 3] & 0xF0) << 20 | int.from_bytes(b[o:o + 3], 'big')
+        o = node * 8 + bit * 4
+        return int.from_bytes(b[o:o + 4], 'big')
+
+    def lookup(self, ip):
+        addr = ipaddress.ip_address(ip)
+        if addr.version == 6 and self.meta['ip_version'] == 4:
+            return None
+        packed = addr.packed
+        node = self.ipv4 if addr.version == 4 else 0
+        for i in range(len(packed) * 8):
+            if node >= self.nodes:
+                break
+            node = self.child(node, packed[i >> 3] >> (7 - (i & 7)) & 1)
+        if node <= self.nodes:   # равно — адреса в базе нет
+            return None
+        return self.decode(self.tree + node - self.nodes, self.tree + 16)[0]
+
+    def decode(self, off, base):
+        b = self.buf
+        ctrl = b[off]
+        off += 1
+        kind = ctrl >> 5
+        if kind == 1:   # ссылка на значение в другом месте раздела данных
+            size, v = ctrl >> 3 & 3, ctrl & 7
+            if size == 3:
+                to = int.from_bytes(b[off:off + 4], 'big')
+            else:
+                to = (v << 8 * (size + 1) | int.from_bytes(b[off:off + size + 1], 'big')) + (0, 2048, 526336)[size]
+            return self.decode(base + to, base)[0], off + size + 1
+        if kind == 0:   # расширенный тип — номер в следующем байте
+            kind = 7 + b[off]
+            off += 1
+        size = ctrl & 0x1F
+        if size >= 29:
+            extra = size - 28
+            size = (29, 285, 65821)[extra - 1] + int.from_bytes(b[off:off + extra], 'big')
+            off += extra
+        end = off + size
+        if kind == 2:
+            return b[off:end].decode('utf-8'), end
+        if kind == 3:
+            return struct.unpack('>d', b[off:end])[0], end
+        if kind == 4:
+            return bytes(b[off:end]), end
+        if kind in (5, 6, 9, 10):
+            return int.from_bytes(b[off:end], 'big'), end
+        if kind == 8:
+            return int.from_bytes(b[off:end], 'big', signed=size == 4), end
+        if kind == 15:
+            return struct.unpack('>f', b[off:end])[0], end
+        if kind == 14:
+            return bool(size), off
+        if kind == 7:
+            out = {}
+            for _ in range(size):
+                key, off = self.decode(off, base)
+                out[key], off = self.decode(off, base)
+            return out, off
+        if kind == 11:
+            out = []
+            for _ in range(size):
+                item, off = self.decode(off, base)
+                out.append(item)
+            return out, off
+        raise ValueError(f'неизвестный тип данных: {kind}')
+
+
+_geo = {'mtime': None, 'db': None}
+_geo_lock = threading.Lock()
+
+
+def place(ip):
+    """Страна и город по IP: {'cc': 'KZ', 'country': ..., 'region': ..., 'city': ...} или None."""
+    try:
+        mtime = os.stat(GEOIP).st_mtime
+    except OSError:
+        return None
+    with _geo_lock:   # базу обновили — открыть новую
+        if _geo['mtime'] != mtime:
+            try:
+                _geo['db'] = MaxMindDB(GEOIP)
+            except (OSError, ValueError, KeyError):
+                _geo['db'] = None
+            _geo['mtime'] = mtime
+    return _place(ip, mtime) if _geo['db'] else None
+
+
+@functools.lru_cache(maxsize=8192)
+def _place(ip, mtime):
+    try:
+        rec = _geo['db'].lookup(ip)
+    except (ValueError, IndexError, KeyError):
+        return None
+    if not isinstance(rec, dict) or not rec.get('country'):
+        return None
+    name = lambda part: (part or {}).get('names', {}).get('ru') or (part or {}).get('names', {}).get('en')
+    # Город в базе бывает с районом — «Almaty (Bostandyk District)»: район отдельно, чтобы город не дробился
+    city, _, district = (name(rec.get('city')) or '').partition(' (')
+    return {'cc': rec['country'].get('iso_code'), 'country': name(rec['country']),
+            'region': name((rec.get('subdivisions') or [None])[0]), 'city': city or None,
+            'district': district.removesuffix(')') or None}
+
+
+def update_geoip(force):
+    """Скачивает свежую бесплатную базу DB-IP «IP to City Lite», если на диске не она. Новая выходит
+    в начале месяца; пока её нет, остаётся прошлая."""
+    marker = Path(GEOIP + '.month')
+    have = marker.read_text().strip() if marker.is_file() and Path(GEOIP).is_file() and not force else None
+    t = time.gmtime()
+    months = [f'{t.tm_year}-{t.tm_mon:02}', f'{t.tm_year - (t.tm_mon == 1)}-{(t.tm_mon - 2) % 12 + 1:02}']
+    for month in months:
+        if have == month:
+            print(f'база стран и городов свежая: {month}')
+            return
+        url = GEOIP_URL.format(month=month)
+        tmp = Path(GEOIP + '.part')
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'animanga-geoip/1'})
+            with urllib.request.urlopen(req, timeout=60) as res, gzip.open(res) as src, open(tmp, 'wb') as dst:
+                shutil.copyfileobj(src, dst, 1 << 20)
+        except urllib.error.HTTPError as e:
+            tmp.unlink(missing_ok=True)
+            if e.code == 404:
+                continue
+            sys.exit(f'не скачалась база стран и городов: {url} — {e}')
+        except (OSError, EOFError) as e:
+            tmp.unlink(missing_ok=True)
+            sys.exit(f'не скачалась база стран и городов: {url} — {e}')
+        try:
+            MaxMindDB(tmp).lookup('8.8.8.8')
+        except (ValueError, KeyError, IndexError) as e:
+            tmp.unlink(missing_ok=True)
+            sys.exit(f'скачанный файл — не база стран и городов: {e}')
+        os.replace(tmp, GEOIP)
+        marker.write_text(month + '\n')
+        print(f'база стран и городов обновлена: {month} → {GEOIP}')
+        return
+    sys.exit('свежая база стран и городов не нашлась — оставляю прежнюю')
 
 
 class Limit:
@@ -553,14 +740,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         def top(counter, limit=None):
             return [{'name': k, 'visitors': n} for k, n in counter.most_common(limit)]
 
-        devices, browsers, systems = Counter(), Counter(), Counter()
+        devices, browsers, systems, countries, cities = Counter(), Counter(), Counter(), Counter(), Counter()
         for v in people.values():
             device, browser, system = ua_info(v.pop('ua'))
             v.update(device=device, browser=browser, os=system, pages=len(v.pop('paths')), users=sorted(v['users']),
-                     last_title=page_title(v['last_path']))
+                     last_title=page_title(v['last_path']), place=place(v['ip']))
             devices[device] += 1
             browsers[browser] += 1
             systems[system] += 1
+            if v['place']:
+                countries[v['place']['cc'], v['place']['country']] += 1
+                if v['place']['city']:
+                    cities[v['place']['city'], v['place']['cc']] += 1
         visitors = sorted(people.values(), key=lambda v: -v['last'])
 
         accounts = []
@@ -600,9 +791,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             'refs': [{'host': k, 'views': r['views'], 'visitors': len(r['ips'])}
                      for k, r in sorted(refs.items(), key=lambda kv: -len(kv[1]['ips']))[:20]],
             'devices': top(devices), 'browsers': top(browsers), 'systems': top(systems),
+            'geo': place('8.8.8.8') is not None,   # база стран и городов на месте и читается
+            'countries': [{'cc': cc, 'name': name, 'visitors': n} for (cc, name), n in countries.most_common(20)],
+            'cities': [{'name': city, 'cc': cc, 'visitors': n} for (city, cc), n in cities.most_common(20)],
             'visitors': visitors[:300],
             'accounts': accounts[:200],
-            'recent': [{'ts': r['ts'], 'ip': r['ip'], 'path': r['path'], 'title': page_title(r['path']),
+            'recent': [{'ts': r['ts'], 'ip': r['ip'], 'path': r['path'], 'title': page_title(r['path']), 'place': place(r['ip']),
                         'user': r['name'], 'ref': r['ref'], 'locked': bool(r['locked'])} for r in rows[:-81:-1]],
         }, ()
 
@@ -614,6 +808,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         agents = Counter(r['ua'] for r in rows)
         return 200, {
             'ip': ip[:64],
+            'place': place(ip[:64]),
             'total': self.con.execute('SELECT COUNT(*) FROM hits WHERE ip = ?', (ip[:64],)).fetchone()[0],
             'agents': [dict(zip(('device', 'browser', 'os'), ua_info(ua)), ua=ua, views=n) for ua, n in agents.most_common(10)],
             'hits': [{'ts': r['ts'], 'path': r['path'], 'title': page_title(r['path']), 'ref': r['ref'], 'user': r['name'],
@@ -748,7 +943,7 @@ def user_command(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Аниманга: вход, регистрация и комментарии')
+    parser = argparse.ArgumentParser(description='Аниманга: вход, регистрация, комментарии и статистика')
     sub = parser.add_subparsers(dest='command', required=True)
     run = sub.add_parser('serve', help='запустить API')
     run.add_argument('--dev', metavar='ПАПКА', help='локально: ещё и раздавать сайт из этой папки')
@@ -762,9 +957,13 @@ def main():
                        help='читатель: читает и комментирует личный раздел, ничего не удаляет')
     roles.add_argument('--member', dest='role', action='store_const', const='member',
                        help='обычный участник: только открытые страницы, удаляет свои комментарии')
+    geo = sub.add_parser('geoip', help='скачать базу стран и городов DB-IP, если вышла новая')
+    geo.add_argument('--force', action='store_true', help='скачать заново, даже если на диске уже эта')
     args = parser.parse_args()
     if args.command == 'serve':
         serve(args.dev)
+    elif args.command == 'geoip':
+        update_geoip(args.force)
     else:
         user_command(args)
 

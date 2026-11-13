@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Выкладывает сайт на сервер по SSH (rsync): код и картинки, без инструментов и листов проверки,
-# и API входа и комментариев (server/) — в /opt/animanga с перезапуском службы animanga-api.
+# и API входа и комментариев (server/) — в /opt/animanga с перезапуском службы animanga-api, а раз в месяц
+# ещё и свежую базу стран и городов для статистики.
 #
 #   deploy/deploy.sh user@host https://домен
 #
@@ -44,3 +45,8 @@ done
 
 rsync -rlptz --delete "${SKIP[@]}" ./private/ "$HOST:$DEST/private/"
 echo "личная часть: $URL/private/ (владелец и читатели)"
+
+# База стран и городов для статистики (DB-IP, выходит раз в месяц): скачивается, только если вышла новая.
+# Не скачалась — не беда: статистика покажет адреса без мест
+ssh "$HOST" 'cd / && sudo -u animanga env ANIMANGA_DB=/var/lib/animanga/animanga.db python3 -I /opt/animanga/animanga_api.py geoip' \
+  || echo "! база стран и городов не обновилась — статистика покажет адреса без мест" >&2
